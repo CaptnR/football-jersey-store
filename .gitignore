@@ -1,0 +1,17 @@
+# Node.js dependencies
+node_modules/
+build/
+.env
+
+# Python dependencies
+__pycache__/
+*.pyc
+db.sqlite3
+.env
+
+# Django static files
+staticfiles/
+
+# OS/IDE files
+.DS_Store
+.vscode/
