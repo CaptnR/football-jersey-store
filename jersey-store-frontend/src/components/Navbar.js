@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { setAuthToken } from '../api/api';
+import { CartContext } from '../context/CartContext'; // Import CartContext
 
 function Navbar() {
     const navigate = useNavigate();
+    const { cart } = useContext(CartContext); // Access cart context to get cart items
 
     const handleLogout = () => {
         localStorage.removeItem('token'); // Remove token from storage
@@ -21,14 +23,29 @@ function Navbar() {
                     <strong>Football Jersey Store</strong>
                 </li>
             </ul>
-            <ul>
+            <ul style={{ display: 'flex', gap: '10px' }}>
                 <li>
                     <Link to="/">Home</Link>
                 </li>
+                {isLoggedIn && (
+                    <li>
+                        <Link to="/cart">
+                            Cart ({cart.length}) {/* Display the number of items in the cart */}
+                        </Link>
+                    </li>
+                )}
                 {isLoggedIn ? (
                     <>
                         <li>
-                            <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}>
+                            <button
+                                onClick={handleLogout}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#007bff',
+                                    cursor: 'pointer',
+                                }}
+                            >
                                 Logout
                             </button>
                         </li>

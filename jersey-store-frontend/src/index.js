@@ -9,6 +9,7 @@ import SignupPage from './pages/SignupPage';
 import JerseyDetails from './pages/JerseyDetails';
 import CustomizationPage from './pages/CustomizationPage';
 import { setAuthToken } from './api/api';
+import { CartProvider } from './context/CartContext';
 
 const token = localStorage.getItem('token');
 if (token) {
@@ -32,4 +33,8 @@ function App() {
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+root.render(
+    <CartProvider>
+        <App />
+    </CartProvider>
+);
