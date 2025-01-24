@@ -15,6 +15,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import UserOrdersPage from './pages/UserOrdersPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import WishlistPage from './pages/WishlistPage';
 
 const token = localStorage.getItem('token');
 if (token) {
@@ -36,6 +37,7 @@ function App() {
                 <Route path="/orders" element={<UserOrdersPage />} />
                 <Route path="/admin/orders" element={<AdminOrdersPage />} />
                 <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                <Route path="/wishlist" element={<WishlistPage />} />
             </Routes>
             <Footer />
         </Router>

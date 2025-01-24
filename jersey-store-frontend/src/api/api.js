@@ -17,3 +17,24 @@ export const fetchJerseys = () => API.get('/jerseys/');
 export const fetchCustomizations = () => API.get('/customizations/');
 export const saveCustomization = (data) => API.post('/customizations/', data);
 
+export const getWishlist = async (token) => {
+    return axios.get('http://127.0.0.1:8000/api/wishlist/', {
+        headers: { Authorization: `Token ${token}` },
+    });
+};
+
+export const addToWishlist = async (token, jerseyId) => {
+    return axios.post(
+        'http://127.0.0.1:8000/api/wishlist/',
+        { jersey_id: jerseyId },
+        { headers: { Authorization: `Token ${token}` } }
+    );
+};
+
+export const removeFromWishlist = async (token, jerseyId) => {
+    return axios.delete('http://127.0.0.1:8000/api/wishlist/', {
+        headers: { Authorization: `Token ${token}` },
+        data: { jersey_id: jerseyId },
+    });
+};
+

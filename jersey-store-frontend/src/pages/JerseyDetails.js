@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchJerseys, fetchPlayers } from '../api/api';
+import { fetchJerseys, fetchPlayers, addToWishlist, removeFromWishlist } from '../api/api';
 import { CartContext } from '../context/CartContext';
 
 function JerseyDetails() {
@@ -10,6 +10,11 @@ function JerseyDetails() {
     const [loading, setLoading] = useState(true);
     const { addToCart } = useContext(CartContext);
 
+    // Wishlist state
+    const [isWishlisted, setIsWishlisted] = useState(false);
+    const token = localStorage.getItem('token'); // Get token from localStorage
+
+    // Fetch jersey and player details
     useEffect(() => {
         fetchJerseys()
             .then((response) => {
@@ -30,6 +35,20 @@ function JerseyDetails() {
             });
     }, [id, jersey?.player]);
 
+    // Handle wishlist functionality
+    const handleWishlist = async () => {
+        try {
+            if (isWishlisted) {
+                await removeFromWishlist(token, jersey.id);
+            } else {
+                await addToWishlist(token, jersey.id);
+            }
+            setIsWishlisted(!isWishlisted);
+        } catch (error) {
+            console.error('Error updating wishlist:', error.response || error.message);
+        }
+    };
+
     if (loading) return <p>Loading...</p>;
     if (!jersey || !player) return <p>Jersey not found.</p>;
 
@@ -49,7 +68,7 @@ function JerseyDetails() {
                     <h1>{player.name} Jersey</h1>
                     <p><strong>Price:</strong> ${jersey.price}</p>
                     <p><strong>Team:</strong> {player.team?.name || "Unknown Team"}</p>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <button
                             onClick={() => addToCart(jersey)}
                             className="button-primary"
@@ -63,6 +82,12 @@ function JerseyDetails() {
                         >
                             Customize Jersey
                         </Link>
+                        <button
+                            onClick={handleWishlist}
+                            className={`button-${isWishlisted ? 'secondary' : 'primary'}`}
+                        >
+                            {isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                        </button>
                     </div>
                 </div>
             </div>

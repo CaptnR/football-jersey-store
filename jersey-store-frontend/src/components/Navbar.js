@@ -32,6 +32,9 @@ function Navbar() {
                 {isLoggedIn && (
                     <>
                         <li>
+                            <Link to="/wishlist">Wishlist</Link> {/* Added Wishlist link */}
+                        </li>
+                        <li>
                             <Link to="/cart">
                                 Cart ({cart.length}) {/* Display the number of items in the cart */}
                             </Link>

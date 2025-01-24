@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
-from .models import Team, Player, Jersey, Customization, Order, Payment
+from .models import Team, Player, Jersey, Customization, Order, Payment, Wishlist
 from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
@@ -146,3 +146,35 @@ class RecommendedJerseysView(APIView):
         except Exception as e:
             print(f"Error in RecommendedJerseysView: {e}")
             return Response({'error': str(e)}, status=500)
+        
+
+class WishlistView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get all wishlist items for the logged-in user."""
+        wishlist_items = Wishlist.objects.filter(user=request.user).select_related('jersey')
+        jerseys = [item.jersey for item in wishlist_items]
+        serializer = JerseySerializer(jerseys, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    def post(self, request):
+        """Add a jersey to the user's wishlist."""
+        jersey_id = request.data.get('jersey_id')
+        if not jersey_id:
+            return Response({'error': 'Jersey ID is required'}, status=400)
+
+        try:
+            Wishlist.objects.create(user=request.user, jersey_id=jersey_id)
+            return Response({'message': 'Jersey added to wishlist'}, status=201)
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+    def delete(self, request):
+        """Remove a jersey from the user's wishlist."""
+        jersey_id = request.data.get('jersey_id')
+        if not jersey_id:
+            return Response({'error': 'Jersey ID is required'}, status=400)
+
+        Wishlist.objects.filter(user=request.user, jersey_id=jersey_id).delete()
+        return Response({'message': 'Jersey removed from wishlist'}, status=200)

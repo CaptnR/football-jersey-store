@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import TeamViewSet, PlayerViewSet, JerseyViewSet, CustomizationViewSet, login_user, signup_user
-from .views import CheckoutView, UserOrderView, AdminOrderView, AdminDashboardView, RecommendedJerseysView
+from .views import CheckoutView, UserOrderView, AdminOrderView, AdminDashboardView, RecommendedJerseysView, WishlistView
 
 router = DefaultRouter()
 router.register('jerseys', JerseyViewSet, basename='jersey')
@@ -30,6 +30,7 @@ urlpatterns += [
     path('admin/orders/<int:pk>/', AdminOrderView.as_view(), name='admin-order-detail'),
     # Admin dashboard
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
+    path('wishlist/', WishlistView.as_view(), name='wishlist'),
 ]
 
 urlpatterns += [

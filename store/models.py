@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth.models import User
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
@@ -61,4 +62,15 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment for Order {self.order.id}"
+
+class Wishlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Tie wishlist to a user
+    jersey = models.ForeignKey('Jersey', on_delete=models.CASCADE)  # Tie to a jersey
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'jersey')  # Prevent duplicate entries in the wishlist
+
+    def __str__(self):
+        return f"{self.user.username}'s wishlist item: {self.jersey.player.name}"
 
