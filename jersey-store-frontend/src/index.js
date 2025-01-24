@@ -10,6 +10,7 @@ import JerseyDetails from './pages/JerseyDetails';
 import CustomizationPage from './pages/CustomizationPage';
 import { setAuthToken } from './api/api';
 import { CartProvider } from './context/CartContext';
+import CartPage from './pages/CartPage';
 
 const token = localStorage.getItem('token');
 if (token) {
@@ -26,6 +27,7 @@ function App() {
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/jersey/:id" element={<JerseyDetails />} />
                 <Route path="/customize" element={<CustomizationPage />} />
+                <Route path="/cart" element={<CartPage />} />
             </Routes>
             <Footer />
         </Router>
