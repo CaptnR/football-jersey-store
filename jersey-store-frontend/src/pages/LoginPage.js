@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function LoginPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const navigate = useNavigate(); // Initialize useNavigate
+    const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -16,11 +16,15 @@ function LoginPage() {
                 password,
             });
 
-            const token = response.data.token; // Extract token from API response
-            localStorage.setItem('token', token); // Save token in localStorage
-            console.log('Token saved:', token); // Debug: Check the saved token
+            const token = response.data.token; // Extract token from the response
+            const isAdmin = response.data.is_admin; // Extract admin status from the response
+
+            // Save the token and admin status in localStorage
+            localStorage.setItem('token', token);
+            localStorage.setItem('isAdmin', isAdmin); // Store admin status as 'true' or 'false'
+
             alert('Login successful!');
-            navigate('/'); // Navigate to the home page
+            navigate('/'); // Redirect to the home page
         } catch (error) {
             console.error('Error during login:', error.response || error.message);
             alert('Login failed. Please try again.');

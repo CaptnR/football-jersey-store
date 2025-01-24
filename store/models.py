@@ -37,10 +37,17 @@ class Customization(models.Model):
         return f"Customization for {self.jersey.player.name}"
     
 class Order(models.Model):
-    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)  # Link to user
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Shipped', 'Shipped'),
+        ('Delivered', 'Delivered'),
+        ('Cancelled', 'Cancelled'),
+    ]
+
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)  # Link to the user
     total_price = models.DecimalField(max_digits=10, decimal_places=2)  # Total price
-    created_at = models.DateTimeField(auto_now_add=True)  # Timestamp
-    status = models.CharField(max_length=20, default='Pending')  # Order status
+    created_at = models.DateTimeField(auto_now_add=True)  # Order creation time
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')  # Order status
 
     def __str__(self):
         return f"Order {self.id} by {self.user.username}"

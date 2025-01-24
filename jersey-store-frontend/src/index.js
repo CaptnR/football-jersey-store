@@ -12,6 +12,9 @@ import { setAuthToken } from './api/api';
 import { CartProvider } from './context/CartContext';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
+import UserOrdersPage from './pages/UserOrdersPage';
+import AdminOrdersPage from './pages/AdminOrdersPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 const token = localStorage.getItem('token');
 if (token) {
@@ -30,6 +33,9 @@ function App() {
                 <Route path="/customize" element={<CustomizationPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/orders" element={<UserOrdersPage />} />
+                <Route path="/admin/orders" element={<AdminOrdersPage />} />
+                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             </Routes>
             <Footer />
         </Router>

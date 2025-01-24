@@ -32,10 +32,17 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ['id', 'user', 'total_price', 'created_at', 'status']
 
-class OrderSerializer(serializers.ModelSerializer):
+class UserOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
-        fields = ['id', 'user', 'total_price', 'created_at', 'status']
+        fields = ['id', 'total_price', 'status', 'created_at']
+
+class AdminOrderSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()  # Show username instead of user ID
+
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'total_price', 'status', 'created_at']
 
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
