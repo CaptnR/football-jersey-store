@@ -1,13 +1,11 @@
-import { useNavigate, Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { isLoggedIn, fetchJerseys } from '../api/api';
-import Spinner from '../components/Spinner';
 
 function HomePage() {
     const navigate = useNavigate();
     const [jerseys, setJerseys] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (!isLoggedIn()) {
@@ -18,16 +16,11 @@ function HomePage() {
                     setJerseys(response.data);
                     setLoading(false);
                 })
-                .catch((error) => {
-                    console.error("Error fetching jerseys:", error);
-                    setError('Failed to load jerseys.');
-                    setLoading(false);
-                });
+                .catch((error) => console.error("Error fetching jerseys:", error));
         }
     }, [navigate]);
 
-    if (loading) return <Spinner />;
-    if (error) return <p>{error}</p>;
+    if (loading) return <p>Loading...</p>;
 
     return (
         <main className="container">
@@ -35,22 +28,30 @@ function HomePage() {
             <section className="hero">
                 <h1>Football Jersey Store</h1>
                 <p>Discover jerseys of your favorite teams and players.</p>
-                <button onClick={() => navigate('/customize')} className="button-primary">Customize Now</button>
+                <button
+                    onClick={() => navigate('/customize')}
+                    className="button-primary"
+                >
+                    Customize Jersey
+                </button>
             </section>
 
             {/* Jersey Grid */}
             <div className="grid">
-                {jerseys.map((jersey) => (
-                    <Link
-                        key={jersey.id}
-                        to={`/jersey/${jersey.id}`}
-                        className="jersey-card"
-                    >
-                        <article>
-                            <img src={jersey.image} alt="Jersey" />
-                            <h2>${jersey.price}</h2>
-                        </article>
-                    </Link>
+    {jerseys.map((jersey) => (
+        <Link key={jersey.id} to={`/jersey/${jersey.id}`} className="card">
+            <img
+                src={jersey.image} // Use the image URL from the API response
+                alt="Jersey"
+                style={{
+                    width: '100%',
+                    height: '200px',
+                    objectFit: 'cover',
+                    borderRadius: '8px',
+                }}
+            />
+            <h2>${jersey.price}</h2>
+        </Link>
                 ))}
             </div>
         </main>

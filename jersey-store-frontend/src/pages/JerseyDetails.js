@@ -4,14 +4,13 @@ import { fetchJerseys, fetchPlayers } from '../api/api';
 import { CartContext } from '../context/CartContext';
 
 function JerseyDetails() {
-    const { id } = useParams(); // Extract the jersey ID from the URL
-    const [jersey, setJersey] = useState(null); // State for jersey data
-    const [player, setPlayer] = useState(null); // State for player data
-    const [loading, setLoading] = useState(true); // State for loading spinner
-    const { addToCart } = useContext(CartContext); // Access the cart context
+    const { id } = useParams();
+    const [jersey, setJersey] = useState(null);
+    const [player, setPlayer] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const { addToCart } = useContext(CartContext);
 
     useEffect(() => {
-        // Fetch the jersey and player data
         fetchJerseys()
             .then((response) => {
                 const selectedJersey = response.data.find((item) => item.id === parseInt(id));
@@ -36,49 +35,35 @@ function JerseyDetails() {
 
     return (
         <main className="container">
-            <h1>{player.name} Jersey</h1>
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                {/* Jersey Image */}
+            <div className="card" style={{ display: 'flex', gap: '20px', padding: '20px' }}>
                 <img
                     src={jersey.image}
                     alt={`${player.name} Jersey`}
-                    style={{ width: '300px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
+                    style={{
+                        width: '300px',
+                        borderRadius: '8px',
+                        objectFit: 'cover',
+                    }}
                 />
                 <div>
-                    {/* Jersey Details */}
+                    <h1>{player.name} Jersey</h1>
                     <p><strong>Price:</strong> ${jersey.price}</p>
                     <p><strong>Team:</strong> {player.team?.name || "Unknown Team"}</p>
-
-                    {/* Add to Cart Button */}
-                    <button
-                        onClick={() => addToCart(jersey)} // Add jersey to the cart
-                        style={{
-                            padding: '10px',
-                            backgroundColor: '#007bff',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer',
-                            marginRight: '10px',
-                        }}
-                    >
-                        Add to Cart
-                    </button>
-
-                    {/* Customize Jersey Button */}
-                    <Link
-                        to="/customize"
-                        state={{ jerseyId: jersey.id }} // Pass the jersey ID to the customize page
-                        style={{
-                            padding: '10px',
-                            backgroundColor: '#28a745',
-                            color: '#fff',
-                            textDecoration: 'none',
-                            borderRadius: '5px',
-                        }}
-                    >
-                        Customize Jersey
-                    </Link>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            onClick={() => addToCart(jersey)}
+                            className="button-primary"
+                        >
+                            Add to Cart
+                        </button>
+                        <Link
+                            to="/customize"
+                            state={{ jerseyId: jersey.id }}
+                            className="button-secondary"
+                        >
+                            Customize Jersey
+                        </Link>
+                    </div>
                 </div>
             </div>
         </main>

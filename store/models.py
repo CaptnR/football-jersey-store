@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
@@ -16,12 +17,15 @@ class Player(models.Model):
         return self.name
 
 class Jersey(models.Model):
-    player = models.ForeignKey(Player, on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    image = models.ImageField(upload_to='jerseys')
+    player = models.ForeignKey('Player', on_delete=models.CASCADE)
+    price = models.DecimalField(max_digits=8, decimal_places=2)
+    image = models.ImageField(upload_to='', blank=True, null=True)  # Save files directly in 'jerseys/'
 
-    def __str__(self):
-        return f"{self.player.name} Jersey"
+    def get_image_url(self):
+        # Generate full URL for the image
+        if self.image:
+            return f"{settings.MEDIA_URL}{self.image.name}"  # Cleanly append MEDIA_URL and image name
+        return None
 
 class Customization(models.Model):
     jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE)

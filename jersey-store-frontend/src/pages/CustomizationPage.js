@@ -31,20 +31,36 @@ function CustomizationPage() {
     return (
         <main className="container">
             <h1>Customize Your Jersey</h1>
-            <form onSubmit={handleSubmit} className="grid">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <label>
                     Name
-                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                    />
                 </label>
                 <label>
                     Number
-                    <input type="number" value={number} onChange={(e) => setNumber(e.target.value)} required />
+                    <input
+                        type="number"
+                        value={number}
+                        onChange={(e) => setNumber(e.target.value)}
+                        required
+                    />
                 </label>
                 <label>
                     Design
-                    <textarea value={design} onChange={(e) => setDesign(e.target.value)} required></textarea>
+                    <textarea
+                        value={design}
+                        onChange={(e) => setDesign(e.target.value)}
+                        required
+                    ></textarea>
                 </label>
-                <button type="submit">Submit</button>
+                <button className="button-primary" type="submit">
+                    Submit
+                </button>
             </form>
         </main>
     );
