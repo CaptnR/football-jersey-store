@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Team, Player, Jersey, Customization
+from .models import Team, Player, Jersey, Customization, Order, Payment
 
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,3 +26,18 @@ class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customization
         fields = '__all__'
+        
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'total_price', 'created_at', 'status']
+
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'total_price', 'created_at', 'status']
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'order', 'name_on_card', 'card_number', 'expiration_date']

@@ -35,3 +35,23 @@ class Customization(models.Model):
 
     def __str__(self):
         return f"Customization for {self.jersey.player.name}"
+    
+class Order(models.Model):
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)  # Link to user
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)  # Total price
+    created_at = models.DateTimeField(auto_now_add=True)  # Timestamp
+    status = models.CharField(max_length=20, default='Pending')  # Order status
+
+    def __str__(self):
+        return f"Order {self.id} by {self.user.username}"
+    
+class Payment(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="payment")  # Link to the order
+    name_on_card = models.CharField(max_length=255)  # Cardholder name
+    card_number = models.CharField(max_length=16)  # Card number (dummy, not encrypted for this example)
+    expiration_date = models.CharField(max_length=5)  # MM/YY
+    created_at = models.DateTimeField(auto_now_add=True)  # Timestamp
+
+    def __str__(self):
+        return f"Payment for Order {self.order.id}"
+

@@ -1,9 +1,10 @@
 import React, { useContext } from 'react';
 import { CartContext } from '../context/CartContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 function CartPage() {
-    const { cart, addToCart, removeFromCart, decreaseQuantity, clearCart } = useContext(CartContext);
+    const { cart, addToCart, removeFromCart, decreaseQuantity } = useContext(CartContext);
+    const navigate = useNavigate();
 
     if (cart.length === 0) {
         return (
@@ -58,7 +59,11 @@ function CartPage() {
                 ))}
             </div>
             <h2>Total: ${totalPrice.toFixed(2)}</h2>
-            <button className="button-primary" onClick={clearCart}>
+            {/* Replace "Checkout" button logic */}
+            <button
+                onClick={() => navigate('/checkout')} // Use navigate to go to the checkout page
+                className="button-primary"
+            >
                 Checkout
             </button>
         </main>

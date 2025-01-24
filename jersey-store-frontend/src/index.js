@@ -11,6 +11,7 @@ import CustomizationPage from './pages/CustomizationPage';
 import { setAuthToken } from './api/api';
 import { CartProvider } from './context/CartContext';
 import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
 
 const token = localStorage.getItem('token');
 if (token) {
@@ -28,6 +29,7 @@ function App() {
                 <Route path="/jersey/:id" element={<JerseyDetails />} />
                 <Route path="/customize" element={<CustomizationPage />} />
                 <Route path="/cart" element={<CartPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
             </Routes>
             <Footer />
         </Router>

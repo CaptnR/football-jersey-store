@@ -1,8 +1,12 @@
-from rest_framework.viewsets import ModelViewSet
-from .models import Team, Player, Jersey, Customization
-from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer
-from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.viewsets import ModelViewSet
+from .models import Team, Player, Jersey, Customization, Order, Payment
+from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, OrderSerializer, PaymentSerializer
+from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth.models import User
 from rest_framework.permissions import AllowAny
@@ -48,3 +52,29 @@ class JerseyViewSet(ModelViewSet):
 class CustomizationViewSet(ModelViewSet):
     queryset = Customization.objects.all()
     serializer_class = CustomizationSerializer
+
+class CheckoutView(APIView):
+    authentication_classes = [TokenAuthentication]  # Ensure TokenAuthentication is used
+    permission_classes = [IsAuthenticated]  # Ensure the view requires authentication
+
+    def post(self, request):
+        # Debug: Log the Authorization header
+        print(f"Authorization header: {request.headers.get('Authorization')}")
+
+        user = request.user  # Authenticated user
+        cart_items = request.data.get('cart_items', [])
+        total_price = request.data.get('total_price', 0.0)
+        payment_data = request.data.get('payment', {})
+
+        # Create an order
+        order = Order.objects.create(user=user, total_price=total_price)
+
+        # Create a payment linked to the order
+        Payment.objects.create(
+            order=order,
+            name_on_card=payment_data.get('name_on_card'),
+            card_number=payment_data.get('card_number'),
+            expiration_date=payment_data.get('expiration_date'),
+        )
+
+        return Response({"message": "Order placed successfully!"}, status=status.HTTP_201_CREATED)
