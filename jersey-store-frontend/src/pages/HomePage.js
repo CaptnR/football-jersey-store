@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { isLoggedIn, fetchJerseys } from '../api/api';
+import Recommendations from '../components/Recommendations';
 
 function HomePage() {
     const navigate = useNavigate();
@@ -28,6 +29,7 @@ function HomePage() {
             <section className="hero">
                 <h1>Football Jersey Store</h1>
                 <p>Discover jerseys of your favorite teams and players.</p>
+                <Recommendations /> {/* Include the recommendations section */}
                 <button
                     onClick={() => navigate('/customize')}
                     className="button-primary"

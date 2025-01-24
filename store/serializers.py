@@ -12,15 +12,19 @@ class PlayerSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class JerseySerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()  # Custom method for the image field
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Jersey
         fields = ['id', 'price', 'image', 'player']
 
     def get_image(self, obj):
-        request = self.context.get('request')  # Access the request context
-        return request.build_absolute_uri(obj.get_image_url())  # Use the get_image_url() method
+        # Get the request object from the serializer context
+        request = self.context.get('request')
+        if request is None:
+            # Fallback if request is not available (for testing or other use cases)
+            return obj.get_image_url()
+        return request.build_absolute_uri(obj.get_image_url())
 
 class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:

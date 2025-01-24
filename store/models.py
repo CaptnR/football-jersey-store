@@ -25,7 +25,7 @@ class Jersey(models.Model):
         # Generate full URL for the image
         if self.image:
             return f"{settings.MEDIA_URL}{self.image.name}"  # Cleanly append MEDIA_URL and image name
-        return None
+        return ''  # Return an empty string if no image is set
 
 class Customization(models.Model):
     jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE)

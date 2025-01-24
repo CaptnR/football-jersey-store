@@ -1,7 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import TeamViewSet, PlayerViewSet, JerseyViewSet, CustomizationViewSet, login_user, signup_user
-from .views import CheckoutView, UserOrderView, AdminOrderView, AdminDashboardView
+from .views import CheckoutView, UserOrderView, AdminOrderView, AdminDashboardView, RecommendedJerseysView
+
+router = DefaultRouter()
+router.register('jerseys', JerseyViewSet, basename='jersey')
 
 router = DefaultRouter()
 router.register('teams', TeamViewSet)
@@ -10,6 +13,7 @@ router.register('jerseys', JerseyViewSet)
 router.register('customizations', CustomizationViewSet)
 
 urlpatterns = [
+    path('jerseys/recommendations/', RecommendedJerseysView.as_view(), name='recommended-jerseys'),
     path('', include(router.urls)),
 ]
 

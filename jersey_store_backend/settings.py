@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken', # Added for APIs
     'store', # Added for store app
     'corsheaders', # Added for CORS
+    'django_extensions', # Added for Django Extensions
 ]
 
 MIDDLEWARE = [

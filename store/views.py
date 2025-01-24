@@ -10,6 +10,9 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth.models import User
 from django.db import models
+from .serializers import JerseySerializer
+from .models import Jersey
+from django.http import JsonResponse
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow public access
@@ -130,3 +133,16 @@ class AdminDashboardView(APIView):
             "total_orders": total_orders,
             "pending_orders": pending_orders,
         })
+
+# Recommended Jerseys        
+class RecommendedJerseysView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            recommended_jerseys = Jersey.objects.order_by('?')[:5]
+            serializer = JerseySerializer(recommended_jerseys, many=True, context={'request': request})  # Pass the request here
+            return Response(serializer.data)
+        except Exception as e:
+            print(f"Error in RecommendedJerseysView: {e}")
+            return Response({'error': str(e)}, status=500)
