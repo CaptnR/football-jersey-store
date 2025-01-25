@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from .models import Team, Player, Jersey, Customization, Order, Payment, Wishlist
-from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer
+from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth.models import User
@@ -206,3 +206,31 @@ class FilterMetadataView(APIView):
                 'max': max_price,
             },
         })
+        
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_view(request):
+    """
+    API endpoint to fetch personalized dashboard data for the logged-in user.
+    """
+    user = request.user
+
+    # 1. Fetch recent orders (last 5 orders)
+    recent_orders = Order.objects.filter(user=user).order_by('-created_at')[:5]
+    recent_orders_data = OrderSerializer(recent_orders, many=True).data
+
+    # 2. Fetch wishlisted items
+    wishlist_items = Wishlist.objects.filter(user=user).values_list('jersey', flat=True)
+    wishlisted_jerseys = Jersey.objects.filter(id__in=wishlist_items)
+    wishlist_data = JerseySerializer(wishlisted_jerseys, many=True).data
+
+    # 3. Fetch recommended jerseys
+    recommended_jerseys = Jersey.objects.all()[:5]  # Placeholder for actual recommendation logic
+    recommendations_data = JerseySerializer(recommended_jerseys, many=True).data
+
+    # Return the combined dashboard data
+    return Response({
+        "recent_orders": recent_orders_data,
+        "wishlist": wishlist_data,
+        "recommendations": recommendations_data,
+    })

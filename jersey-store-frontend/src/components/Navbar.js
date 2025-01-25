@@ -32,7 +32,10 @@ function Navbar() {
                 {isLoggedIn && (
                     <>
                         <li>
-                            <Link to="/wishlist">Wishlist</Link> {/* Added Wishlist link */}
+                            <Link to="/dashboard">Dashboard</Link> {/* New User Dashboard Link */}
+                        </li>
+                        <li>
+                            <Link to="/wishlist">Wishlist</Link> {/* Wishlist link */}
                         </li>
                         <li>
                             <Link to="/cart">
