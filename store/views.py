@@ -13,6 +13,8 @@ from django.db import models
 from .serializers import JerseySerializer
 from .models import Jersey
 from django.http import JsonResponse
+from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow public access
@@ -53,6 +55,14 @@ class PlayerViewSet(ModelViewSet):
 class JerseyViewSet(ModelViewSet):
     queryset = Jersey.objects.all()
     serializer_class = JerseySerializer
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+    search_fields = ['player__name', 'player__team__name', 'player__team__league']  # Search by player name, team name or league
+    filterset_fields = {
+        'player__name': ['exact'],            # Filter by player name
+        'player__team__name': ['exact'],      # Filter by team name
+        'player__team__league': ['exact'],    # Filter by league
+        'price': ['gte', 'lte'],              # Filter by price range
+    }  # Filter by player, league, team, or price
     permission_classes = []
 
 class CustomizationViewSet(ModelViewSet):
@@ -178,3 +188,21 @@ class WishlistView(APIView):
 
         Wishlist.objects.filter(user=request.user, jersey_id=jersey_id).delete()
         return Response({'message': 'Jersey removed from wishlist'}, status=200)
+        
+class FilterMetadataView(APIView):
+    def get(self, request):
+        players = Jersey.objects.values_list('player__name', flat=True).distinct()
+        leagues = Jersey.objects.values_list('player__team__league', flat=True).distinct()
+        teams = Jersey.objects.values_list('player__team__name', flat=True).distinct()
+        min_price = Jersey.objects.order_by('price').first().price
+        max_price = Jersey.objects.order_by('-price').first().price
+
+        return Response({
+            'players': players,
+            'leagues': leagues,
+            'teams': teams,
+            'price_range': {
+                'min': min_price,
+                'max': max_price,
+            },
+        })
