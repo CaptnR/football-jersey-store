@@ -67,7 +67,9 @@ function AdminDashboardPage() {
 
     return (
         <main className="container">
-            <h1>Admin Dashboard</h1>
+            <header>
+                <h1>Admin Dashboard</h1>
+            </header>
             <section>
                 <h2>Key Metrics</h2>
                 <ul>
@@ -116,6 +118,9 @@ function AdminDashboardPage() {
                     </table>
                 )}
             </section>
+            <footer>
+                <p>&copy; 2023 Jersey Store</p>
+            </footer>
         </main>
     );
 }

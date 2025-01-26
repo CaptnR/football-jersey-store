@@ -36,7 +36,7 @@ function HomePage() {
                 setLoading(false);
             })
             .catch((error) => {
-                console.error("Error fetching jerseys:", error);
+                console.error('Error fetching jerseys:', error);
                 setLoading(false);
             });
     };
@@ -57,7 +57,7 @@ function HomePage() {
                     maxPrice: response.data.price_range.max,
                 }));
             })
-            .catch((error) => console.error("Error fetching metadata:", error));
+            .catch((error) => console.error('Error fetching metadata:', error));
     };
 
     const handleSearch = (e) => {
@@ -91,59 +91,29 @@ function HomePage() {
     return (
         <main className="container">
             {/* Hero Section */}
-            <section className="hero">
-                <h1>Football Jersey Store</h1>
-                <p>Discover jerseys of your favorite teams and players.</p>
-                <Recommendations />
-                <button onClick={() => navigate('/customize')} className="button-primary">
-                    Customize Jersey
-                </button>
+            <section className="hero pastel-hero">
+                <div className="hero-content">
+                    <h1 className="hero-title">Football Jersey Store</h1>
+                    <p className="hero-subtitle">Discover jerseys of your favorite teams and players.</p>
+                    <Recommendations />
+                    <button onClick={() => navigate('/customize')} className="button-primary hero-button">
+                        Customize Jersey
+                    </button>
+                </div>
             </section>
 
             {/* Search and Filter Section */}
-            <section
-                style={{
-                    margin: '20px 0',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr auto',
-                    gap: '15px',
-                    alignItems: 'center',
-                }}
-            >
+            <section className="search-filter-container">
                 {/* Search Bar */}
-                <form
-                    onSubmit={handleSearchSubmit}
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr auto',
-                        gap: '10px',
-                    }}
-                >
+                <form onSubmit={handleSearchSubmit} className="search-bar">
                     <input
                         type="text"
                         placeholder="Search for jerseys by player or team..."
                         value={searchQuery}
                         onChange={handleSearch}
-                        style={{
-                            padding: '12px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            fontSize: '1rem',
-                        }}
+                        className="search-input"
                     />
-                    <button
-                        type="submit"
-                        className="button-primary"
-                        style={{
-                            padding: '12px 20px',
-                            fontSize: '1rem',
-                            borderRadius: '5px',
-                            backgroundColor: '#007bff',
-                            color: '#fff',
-                            border: 'none',
-                            cursor: 'pointer',
-                        }}
-                    >
+                    <button type="submit" className="button-primary search-button">
                         Search
                     </button>
                 </form>
@@ -151,15 +121,7 @@ function HomePage() {
                 {/* Filter Icon */}
                 <button
                     onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                    style={{
-                        background: '#007bff',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '5px',
-                        padding: '12px 20px',
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                    }}
+                    className="button-primary filter-toggle"
                 >
                     Filters ⚙️
                 </button>
@@ -167,18 +129,12 @@ function HomePage() {
 
             {/* Collapsible Filters */}
             {isFilterExpanded && metadata && (
-                <section style={{ margin: '20px 0', padding: '20px', border: '1px solid #ccc', borderRadius: '5px' }}>
+                <section className="filter-section pastel-filters">
                     <select
                         name="player"
                         value={filters.player}
                         onChange={handleFilterChange}
-                        style={{
-                            padding: '10px',
-                            marginBottom: '10px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            width: '100%',
-                        }}
+                        className="filter-select"
                     >
                         <option value="">Select Player</option>
                         {metadata.players.map((player) => (
@@ -191,13 +147,7 @@ function HomePage() {
                         name="league"
                         value={filters.league}
                         onChange={handleFilterChange}
-                        style={{
-                            padding: '10px',
-                            marginBottom: '10px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            width: '100%',
-                        }}
+                        className="filter-select"
                     >
                         <option value="">Select League</option>
                         {metadata.leagues.map((league) => (
@@ -210,13 +160,7 @@ function HomePage() {
                         name="team"
                         value={filters.team}
                         onChange={handleFilterChange}
-                        style={{
-                            padding: '10px',
-                            marginBottom: '10px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            width: '100%',
-                        }}
+                        className="filter-select"
                     >
                         <option value="">Select Team</option>
                         {metadata.teams.map((team) => (
@@ -225,7 +169,7 @@ function HomePage() {
                             </option>
                         ))}
                     </select>
-                    <div style={{ marginBottom: '10px' }}>
+                    <div className="price-range">
                         <label>Price Range: ${filters.minPrice} - ${filters.maxPrice}</label>
                         <input
                             type="range"
@@ -234,6 +178,7 @@ function HomePage() {
                             max={metadata.price_range.max}
                             value={filters.minPrice}
                             onChange={handleFilterChange}
+                            className="price-slider"
                         />
                         <input
                             type="range"
@@ -242,9 +187,10 @@ function HomePage() {
                             max={metadata.price_range.max}
                             value={filters.maxPrice}
                             onChange={handleFilterChange}
+                            className="price-slider"
                         />
                     </div>
-                    <button onClick={handleFilterApply} className="button-primary">
+                    <button onClick={handleFilterApply} className="button-primary filter-apply-button">
                         Apply Filters
                     </button>
                 </section>
@@ -253,18 +199,9 @@ function HomePage() {
             {/* Jersey Grid */}
             <div className="grid">
                 {jerseys.map((jersey) => (
-                    <Link key={jersey.id} to={`/jersey/${jersey.id}`} className="card">
-                        <img
-                            src={jersey.image}
-                            alt="Jersey"
-                            style={{
-                                width: '100%',
-                                height: '200px',
-                                objectFit: 'cover',
-                                borderRadius: '8px',
-                            }}
-                        />
-                        <h2>${jersey.price}</h2>
+                    <Link key={jersey.id} to={`/jersey/${jersey.id}`} className="card pastel-card">
+                        <img src={jersey.image} alt="Jersey" className="jersey-image" />
+                        <h2 className="jersey-price">${jersey.price}</h2>
                     </Link>
                 ))}
             </div>

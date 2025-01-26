@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getWishlist, removeFromWishlist } from '../api/api';
 import { Link } from 'react-router-dom';
+import './App.css';
 
 function WishlistPage() {
     const [wishlist, setWishlist] = useState([]);
@@ -30,30 +31,66 @@ function WishlistPage() {
 
     return (
         <main className="container">
-            <h1>Your Wishlist</h1>
+            <h1 style={{ textAlign: 'center', marginBottom: '2rem', fontSize: '2rem', fontWeight: 'bold' }}>
+                Your Wishlist
+            </h1>
             {wishlist.length === 0 ? (
-                <p>Your wishlist is empty.</p>
+                <p style={{ textAlign: 'center', fontSize: '1.2rem', color: '#666' }}>
+                    Your wishlist is empty. Start adding your favorite jerseys!
+                </p>
             ) : (
-                <ul style={{ listStyle: 'none', padding: 0 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                     {wishlist.map((jersey) => (
-                        <li key={jersey.id} style={{ marginBottom: '1rem' }}>
-                            <Link to={`/jersey/${jersey.id}`}>
+                        <div
+                            key={jersey.id}
+                            style={{
+                                border: '1px solid #ddd',
+                                borderRadius: '8px',
+                                padding: '1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '1rem',
+                                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                            }}
+                        >
+                            <Link to={`/jersey/${jersey.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                                 <img
                                     src={jersey.image}
                                     alt={jersey.player.name}
-                                    style={{ width: '100px', marginRight: '1rem' }}
+                                    style={{
+                                        width: '100px',
+                                        height: '100px',
+                                        borderRadius: '8px',
+                                        objectFit: 'cover',
+                                    }}
                                 />
-                                {jersey.player.name} - ${jersey.price}
                             </Link>
+                            <div style={{ flex: 1 }}>
+                                <h2 style={{ margin: 0, fontSize: '1.2rem' }}>
+                                    <Link to={`/jersey/${jersey.id}`} style={{ textDecoration: 'none', color: '#007bff' }}>
+                                        {jersey.player.name}
+                                    </Link>
+                                </h2>
+                                <p style={{ margin: '0.5rem 0', fontSize: '1rem', color: '#333' }}>
+                                    ${jersey.price}
+                                </p>
+                            </div>
                             <button
-                                style={{ marginLeft: '1rem', color: 'red' }}
+                                style={{
+                                    background: 'red',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '5px',
+                                    padding: '0.5rem 1rem',
+                                    cursor: 'pointer',
+                                }}
                                 onClick={() => handleRemove(jersey.id)}
                             >
                                 Remove
                             </button>
-                        </li>
+                        </div>
                     ))}
-                </ul>
+                </div>
             )}
         </main>
     );

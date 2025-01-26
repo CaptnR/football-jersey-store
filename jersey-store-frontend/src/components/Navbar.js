@@ -20,56 +20,69 @@ function Navbar() {
 
     return (
         <nav className="container-fluid" role="navigation" style={{ padding: '1rem 0', borderBottom: '1px solid #ddd' }}>
+            {/* Branding Section */}
             <ul>
                 <li>
                     <strong>Football Jersey Store</strong>
                 </li>
             </ul>
+
+            {/* Navigation Links */}
             <ul style={{ display: 'flex', gap: '10px' }}>
                 <li>
                     <Link to="/">Home</Link>
                 </li>
-                {isLoggedIn && (
+
+                {/* Links for Logged-In Users */}
+                {isLoggedIn && !isAdmin && (
                     <>
                         <li>
-                        {isLoggedIn && !isAdmin && <li><Link to="/dashboard">Dashboard</Link></li>} {/* New User Dashboard Link */}
+                            <Link to="/dashboard">Dashboard</Link> {/* New User Dashboard Link */}
                         </li>
                         <li>
-                        {isLoggedIn && !isAdmin && <li><Link to="/wishlist">Wishlist</Link></li>} {/* Wishlist link */}
+                            <Link to="/wishlist">Wishlist</Link> {/* Wishlist link */}
                         </li>
                         <li>
-                        {isLoggedIn && !isAdmin && <li><Link to="/cart">
+                            <Link to="/cart">
                                 Cart ({cart.length}) {/* Display the number of items in the cart */}
-                            </Link></li>}
+                            </Link>
                         </li>
                         <li>
-                        {isLoggedIn && !isAdmin && <li><Link to="/orders">My Orders</Link></li>} {/* User orders link */}
-                        </li>
-                        {isAdmin && (
-                            <>
-                                <li>
-                                    <Link to="/admin/dashboard">Admin Dashboard</Link> {/* Admin dashboard link */}
-                                </li>
-                                <li>
-                                    <Link to="/admin/orders">Admin Orders</Link> {/* Admin orders link */}
-                                </li>
-                            </>
-                        )}
-                        <li>
-                            <button
-                                onClick={handleLogout}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#007bff',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                Logout
-                            </button>
+                            <Link to="/orders">My Orders</Link> {/* User orders link */}
                         </li>
                     </>
                 )}
+
+                {/* Links for Admin Users */}
+                {isAdmin && (
+                    <>
+                        <li>
+                            <Link to="/admin/dashboard">Admin Dashboard</Link> {/* Admin dashboard link */}
+                        </li>
+                        <li>
+                            <Link to="/admin/orders">Admin Orders</Link> {/* Admin orders link */}
+                        </li>
+                    </>
+                )}
+
+                {/* Logout Button for Logged-In Users */}
+                {isLoggedIn && (
+                    <li>
+                        <button
+                            onClick={handleLogout}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#007bff',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Logout
+                        </button>
+                    </li>
+                )}
+
+                {/* Links for Non-Logged-In Users */}
                 {!isLoggedIn && (
                     <>
                         <li>

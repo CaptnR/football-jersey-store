@@ -30,7 +30,9 @@ function CustomizationPage() {
 
     return (
         <main className="container">
-            <h1>Customize Your Jersey</h1>
+            <header>
+                <h1>Customize Your Jersey</h1>
+            </header>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <label>
                     Name
@@ -62,6 +64,9 @@ function CustomizationPage() {
                     Submit
                 </button>
             </form>
+            <footer>
+                <p>&copy; 2023 Jersey Store</p>
+            </footer>
         </main>
     );
 }

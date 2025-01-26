@@ -30,7 +30,9 @@ function AdminOrdersPage() {
 
     return (
         <main className="container">
-            <h1>Admin Orders</h1>
+            <header>
+                <h1>Admin Orders</h1>
+            </header>
             {orders.length === 0 ? (
                 <p>No orders available.</p>
             ) : (
@@ -46,6 +48,9 @@ function AdminOrdersPage() {
                     ))}
                 </ul>
             )}
+            <footer>
+                <p>&copy; 2023 Jersey Store</p>
+            </footer>
         </main>
     );
 }

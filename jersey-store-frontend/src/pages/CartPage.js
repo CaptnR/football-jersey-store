@@ -9,8 +9,13 @@ function CartPage() {
     if (cart.length === 0) {
         return (
             <main className="container">
-                <h1>Your Cart</h1>
+                <header>
+                    <h1>Your Cart</h1>
+                </header>
                 <p>Your cart is empty. <Link to="/">Continue Shopping</Link></p>
+                <footer>
+                    <p>&copy; 2023 Jersey Store</p>
+                </footer>
             </main>
         );
     }
@@ -19,7 +24,9 @@ function CartPage() {
 
     return (
         <main className="container">
-            <h1>Your Cart</h1>
+            <header>
+                <h1>Your Cart</h1>
+            </header>
             <div className="grid">
                 {cart.map((item) => (
                     <div key={item.id} className="card" style={{ padding: '10px' }}>
@@ -59,13 +66,15 @@ function CartPage() {
                 ))}
             </div>
             <h2>Total: ${totalPrice.toFixed(2)}</h2>
-            {/* Replace "Checkout" button logic */}
             <button
                 onClick={() => navigate('/checkout')} // Use navigate to go to the checkout page
                 className="button-primary"
             >
                 Checkout
             </button>
+            <footer>
+                <p>&copy; 2023 Jersey Store</p>
+            </footer>
         </main>
     );
 }

@@ -32,18 +32,20 @@ function UserOrdersPage() {
         <main className="container">
             <h1>Your Orders</h1>
             {orders.length === 0 ? (
-                <p>You have no orders yet.</p>
+                <p className="no-orders-message">You have no orders yet.</p>
             ) : (
-                <ul>
+                <div className="orders-grid">
                     {orders.map((order) => (
-                        <li key={order.id}>
-                            <h2>Order #{order.id}</h2>
-                            <p>Status: {order.status}</p>
-                            <p>Total Price: ${order.total_price}</p>
-                            <p>Order Date: {new Date(order.created_at).toLocaleDateString()}</p>
-                        </li>
+                        <div key={order.id} className="order-card">
+                            <h2 className="order-title">Order #{order.id}</h2>
+                            <div className="order-details">
+                                <p><strong>Status:</strong> {order.status}</p>
+                                <p><strong>Total Price:</strong> ${order.total_price}</p>
+                                <p><strong>Order Date:</strong> {new Date(order.created_at).toLocaleDateString()}</p>
+                            </div>
+                        </div>
                     ))}
-                </ul>
+                </div>
             )}
         </main>
     );

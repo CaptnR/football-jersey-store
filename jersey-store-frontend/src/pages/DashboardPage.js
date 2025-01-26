@@ -43,10 +43,12 @@ function DashboardPage() {
 
     return (
         <main className="container">
-            <h1>Dashboard</h1>
+            <header>
+                <h1>Dashboard</h1>
+            </header>
 
             {/* Recent Orders Section */}
-            <section style={{ marginBottom: '20px' }}>
+            <section className="dashboard-section">
                 <h2>Recent Orders</h2>
                 {recentOrders.length > 0 ? (
                     <div className="grid">
@@ -65,7 +67,7 @@ function DashboardPage() {
             </section>
 
             {/* Wishlist Section */}
-            <section style={{ marginBottom: '20px' }}>
+            <section className="dashboard-section">
                 <h2>Wishlist</h2>
                 {wishlist.length > 0 ? (
                     <div className="grid">
@@ -76,24 +78,19 @@ function DashboardPage() {
                                         ? `http://127.0.0.1:8000${item.image}`
                                         : item.image}
                                     alt="Wishlist Item"
-                                    style={{
-                                        width: '100%',
-                                        height: '200px',
-                                        objectFit: 'cover',
-                                        borderRadius: '8px',
-                                    }}
+                                    className="dashboard-image"
                                 />
                                 <h3>${item.price}</h3>
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <p>No items in the wishlist.</p>
+                    <p>No items in wishlist.</p>
                 )}
             </section>
 
             {/* Recommendations Section */}
-            <section style={{ marginBottom: '20px' }}>
+            <section className="dashboard-section">
                 <h2>Recommendations</h2>
                 {recommendations.length > 0 ? (
                     <div className="grid">
@@ -104,12 +101,7 @@ function DashboardPage() {
                                         ? `http://127.0.0.1:8000${item.image}`
                                         : item.image}
                                     alt="Recommendation"
-                                    style={{
-                                        width: '100%',
-                                        height: '200px',
-                                        objectFit: 'cover',
-                                        borderRadius: '8px',
-                                    }}
+                                    className="dashboard-image"
                                 />
                                 <h3>${item.price}</h3>
                             </div>
@@ -119,6 +111,10 @@ function DashboardPage() {
                     <p>No recommendations available.</p>
                 )}
             </section>
+
+            <footer>
+                <p>&copy; 2023 Jersey Store</p>
+            </footer>
         </main>
     );
 }

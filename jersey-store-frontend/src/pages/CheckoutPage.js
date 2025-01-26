@@ -30,7 +30,6 @@ function CheckoutPage() {
             if (!token) {
                 throw new Error('User is not authenticated. Token is missing.');
             }
-    
             console.log('Sending request with token:', token); // Log token for debugging
     
             await axios.post('http://127.0.0.1:8000/api/checkout/', orderDetails, {
@@ -47,11 +46,12 @@ function CheckoutPage() {
             alert('Checkout failed. Please try again.');
         }
     };
-    
 
     return (
         <main className="container">
-            <h1>Checkout</h1>
+            <header>
+                <h1>Checkout</h1>
+            </header>
             <h2>Order Summary</h2>
             <ul>
                 {cart.map((item) => (
@@ -96,6 +96,9 @@ function CheckoutPage() {
                     Pay Now
                 </button>
             </form>
+            <footer>
+                <p>&copy; 2023 Jersey Store</p>
+            </footer>
         </main>
     );
 }
