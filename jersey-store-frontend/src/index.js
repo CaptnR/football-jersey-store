@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import DashboardPage from './pages/DashboardPage';
@@ -24,6 +24,8 @@ if (token) {
 }
 
 function App() {
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
+
     return (
         <Router>
             <Navbar />
@@ -37,8 +39,8 @@ function App() {
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/orders" element={<UserOrdersPage />} />
-                <Route path="/admin/orders" element={<AdminOrdersPage />} />
-                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                <Route path="/admin/orders" element={isAdmin ? <AdminOrdersPage /> : <Navigate to="/login" />} />
+                <Route path="/admin/dashboard" element={isAdmin ? <AdminDashboardPage /> : <Navigate to="/login" />} />
                 <Route path="/wishlist" element={<WishlistPage />} />
             </Routes>
             <Footer />
@@ -48,7 +50,9 @@ function App() {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-    <CartProvider>
-        <App />
-    </CartProvider>
+    <React.StrictMode>
+        <CartProvider>
+            <App />
+        </CartProvider>
+    </React.StrictMode>
 );

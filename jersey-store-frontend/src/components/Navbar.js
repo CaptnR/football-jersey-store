@@ -32,18 +32,18 @@ function Navbar() {
                 {isLoggedIn && (
                     <>
                         <li>
-                            <Link to="/dashboard">Dashboard</Link> {/* New User Dashboard Link */}
+                        {isLoggedIn && !isAdmin && <li><Link to="/dashboard">Dashboard</Link></li>} {/* New User Dashboard Link */}
                         </li>
                         <li>
-                            <Link to="/wishlist">Wishlist</Link> {/* Wishlist link */}
+                        {isLoggedIn && !isAdmin && <li><Link to="/wishlist">Wishlist</Link></li>} {/* Wishlist link */}
                         </li>
                         <li>
-                            <Link to="/cart">
+                        {isLoggedIn && !isAdmin && <li><Link to="/cart">
                                 Cart ({cart.length}) {/* Display the number of items in the cart */}
-                            </Link>
+                            </Link></li>}
                         </li>
                         <li>
-                            <Link to="/orders">My Orders</Link> {/* User orders link */}
+                        {isLoggedIn && !isAdmin && <li><Link to="/orders">My Orders</Link></li>} {/* User orders link */}
                         </li>
                         {isAdmin && (
                             <>
