@@ -1,15 +1,28 @@
+// Updated DashboardPage.js with Material-UI integration
+
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import {
+    Container,
+    Box,
+    Typography,
+    Grid,
+    Card,
+    CardMedia,
+    CardContent,
+    CircularProgress,
+    Alert,
+} from '@mui/material';
 
 function DashboardPage() {
-    const [recentOrders, setRecentOrders] = useState([]); // State for recent orders
-    const [wishlist, setWishlist] = useState([]); // State for wishlist items
-    const [recommendations, setRecommendations] = useState([]); // State for recommendations
-    const [loading, setLoading] = useState(true); // Loading state
-    const [error, setError] = useState(''); // Error state for debugging
+    const [recentOrders, setRecentOrders] = useState([]);
+    const [wishlist, setWishlist] = useState([]);
+    const [recommendations, setRecommendations] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        const token = localStorage.getItem('token'); // Get the user's token
+        const token = localStorage.getItem('token');
 
         axios
             .get('http://127.0.0.1:8000/api/dashboard/', {
@@ -18,104 +31,145 @@ function DashboardPage() {
                 },
             })
             .then((response) => {
-                console.log('Dashboard API Response:', response.data); // Log API response
-
-                // Extract and set data from the API response
                 setRecentOrders(response.data.recent_orders || []);
                 setWishlist(response.data.wishlist || []);
                 setRecommendations(response.data.recommendations || []);
-                setLoading(false); // Stop loading
+                setLoading(false);
             })
             .catch((error) => {
                 console.error('Error fetching dashboard data:', error);
-                setError('Failed to fetch dashboard data'); // Set error state
+                setError('Failed to fetch dashboard data');
                 setLoading(false);
             });
     }, []);
 
     if (loading) {
-        return <p>Loading...</p>;
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <CircularProgress />
+            </Box>
+        );
     }
 
     if (error) {
-        return <p style={{ color: 'red' }}>{error}</p>;
+        return (
+            <Container maxWidth="sm">
+                <Alert severity="error" sx={{ mt: 4 }}>
+                    {error}
+                </Alert>
+            </Container>
+        );
     }
 
     return (
-        <main className="container">
-            <header>
-                <h1>Dashboard</h1>
-            </header>
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+            <Typography variant="h3" gutterBottom>
+                Dashboard
+            </Typography>
 
             {/* Recent Orders Section */}
-            <section className="dashboard-section">
-                <h2>Recent Orders</h2>
+            <Box sx={{ mb: 4 }}>
+                <Typography variant="h4" gutterBottom>
+                    Recent Orders
+                </Typography>
                 {recentOrders.length > 0 ? (
-                    <div className="grid">
+                    <Grid container spacing={4}>
                         {recentOrders.map((order) => (
-                            <div key={order.id} className="card">
-                                <p><strong>Order ID:</strong> {order.id}</p>
-                                <p><strong>Total Price:</strong> ${order.total_price}</p>
-                                <p><strong>Status:</strong> {order.status}</p>
-                                <p><strong>Date:</strong> {new Date(order.created_at).toLocaleString()}</p>
-                            </div>
+                            <Grid item xs={12} sm={6} md={4} key={order.id}>
+                                <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+                                    <CardContent>
+                                        <Typography variant="body1">
+                                            <strong>Order ID:</strong> {order.id}
+                                        </Typography>
+                                        <Typography variant="body1">
+                                            <strong>Total Price:</strong> ${order.total_price}
+                                        </Typography>
+                                        <Typography variant="body1">
+                                            <strong>Status:</strong> {order.status}
+                                        </Typography>
+                                        <Typography variant="body1">
+                                            <strong>Date:</strong> {new Date(order.created_at).toLocaleString()}
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
                         ))}
-                    </div>
+                    </Grid>
                 ) : (
-                    <p>No recent orders available.</p>
+                    <Typography>No recent orders available.</Typography>
                 )}
-            </section>
+            </Box>
 
             {/* Wishlist Section */}
-            <section className="dashboard-section">
-                <h2>Wishlist</h2>
+            <Box sx={{ mb: 4 }}>
+                <Typography variant="h4" gutterBottom>
+                    Wishlist
+                </Typography>
                 {wishlist.length > 0 ? (
-                    <div className="grid">
+                    <Grid container spacing={4}>
                         {wishlist.map((item) => (
-                            <div key={item.id} className="card">
-                                <img
-                                    src={item.image.startsWith('/jerseys')
-                                        ? `http://127.0.0.1:8000${item.image}`
-                                        : item.image}
-                                    alt="Wishlist Item"
-                                    className="dashboard-image"
-                                />
-                                <h3>${item.price}</h3>
-                            </div>
+                            <Grid item xs={12} sm={6} md={4} key={item.id}>
+                                <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+                                    <CardMedia
+                                        component="img"
+                                        height="200"
+                                        image={
+                                            item.image.startsWith('/jerseys')
+                                                ? `http://127.0.0.1:8000${item.image}`
+                                                : item.image
+                                        }
+                                        alt="Wishlist Item"
+                                    />
+                                    <CardContent>
+                                        <Typography variant="h6">${item.price}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
                         ))}
-                    </div>
+                    </Grid>
                 ) : (
-                    <p>No items in wishlist.</p>
+                    <Typography>No items in wishlist.</Typography>
                 )}
-            </section>
+            </Box>
 
             {/* Recommendations Section */}
-            <section className="dashboard-section">
-                <h2>Recommendations</h2>
+            <Box>
+                <Typography variant="h4" gutterBottom>
+                    Recommendations
+                </Typography>
                 {recommendations.length > 0 ? (
-                    <div className="grid">
+                    <Grid container spacing={4}>
                         {recommendations.map((item) => (
-                            <div key={item.id} className="card">
-                                <img
-                                    src={item.image.startsWith('/jerseys')
-                                        ? `http://127.0.0.1:8000${item.image}`
-                                        : item.image}
-                                    alt="Recommendation"
-                                    className="dashboard-image"
-                                />
-                                <h3>${item.price}</h3>
-                            </div>
+                            <Grid item xs={12} sm={6} md={4} key={item.id}>
+                                <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+                                    <CardMedia
+                                        component="img"
+                                        height="200"
+                                        image={
+                                            item.image.startsWith('/jerseys')
+                                                ? `http://127.0.0.1:8000${item.image}`
+                                                : item.image
+                                        }
+                                        alt="Recommendation"
+                                    />
+                                    <CardContent>
+                                        <Typography variant="h6">${item.price}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
                         ))}
-                    </div>
+                    </Grid>
                 ) : (
-                    <p>No recommendations available.</p>
+                    <Typography>No recommendations available.</Typography>
                 )}
-            </section>
+            </Box>
 
-            <footer>
-                <p>&copy; 2023 Jersey Store</p>
-            </footer>
-        </main>
+            <Box sx={{ mt: 4 }}>
+                <Typography variant="body2" color="text.secondary" align="center">
+                    &copy; 2023 Jersey Store
+                </Typography>
+            </Box>
+        </Container>
     );
 }
 

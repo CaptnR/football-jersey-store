@@ -1,7 +1,18 @@
+// Updated WishlistPage.js with Material-UI components and styling
+
 import React, { useEffect, useState } from 'react';
 import { getWishlist, removeFromWishlist } from '../api/api';
 import { Link } from 'react-router-dom';
-import './App.css';
+import {
+    Container,
+    Typography,
+    Grid,
+    Card,
+    CardMedia,
+    CardContent,
+    Button,
+    Alert,
+} from '@mui/material';
 
 function WishlistPage() {
     const [wishlist, setWishlist] = useState([]);
@@ -30,69 +41,55 @@ function WishlistPage() {
     };
 
     return (
-        <main className="container">
-            <h1 style={{ textAlign: 'center', marginBottom: '2rem', fontSize: '2rem', fontWeight: 'bold' }}>
+        <Container maxWidth="md" sx={{ mt: 4 }}>
+            <Typography variant="h4" gutterBottom align="center">
                 Your Wishlist
-            </h1>
+            </Typography>
+
             {wishlist.length === 0 ? (
-                <p style={{ textAlign: 'center', fontSize: '1.2rem', color: '#666' }}>
+                <Alert severity="info" sx={{ mt: 4 }}>
                     Your wishlist is empty. Start adding your favorite jerseys!
-                </p>
+                </Alert>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                <Grid container spacing={4}>
                     {wishlist.map((jersey) => (
-                        <div
-                            key={jersey.id}
-                            style={{
-                                border: '1px solid #ddd',
-                                borderRadius: '8px',
-                                padding: '1rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '1rem',
-                                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                            }}
-                        >
-                            <Link to={`/jersey/${jersey.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <img
-                                    src={jersey.image}
+                        <Grid item xs={12} sm={6} md={4} key={jersey.id}>
+                            <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
+                                <CardMedia
+                                    component="img"
+                                    height="140"
+                                    image={jersey.image}
                                     alt={jersey.player.name}
-                                    style={{
-                                        width: '100px',
-                                        height: '100px',
-                                        borderRadius: '8px',
-                                        objectFit: 'cover',
-                                    }}
+                                    sx={{ objectFit: 'cover' }}
                                 />
-                            </Link>
-                            <div style={{ flex: 1 }}>
-                                <h2 style={{ margin: 0, fontSize: '1.2rem' }}>
-                                    <Link to={`/jersey/${jersey.id}`} style={{ textDecoration: 'none', color: '#007bff' }}>
+                                <CardContent>
+                                    <Typography
+                                        variant="h6"
+                                        gutterBottom
+                                        component={Link}
+                                        to={`/jersey/${jersey.id}`}
+                                        sx={{ textDecoration: 'none', color: 'primary.main' }}
+                                    >
                                         {jersey.player.name}
-                                    </Link>
-                                </h2>
-                                <p style={{ margin: '0.5rem 0', fontSize: '1rem', color: '#333' }}>
-                                    ${jersey.price}
-                                </p>
-                            </div>
-                            <button
-                                style={{
-                                    background: 'red',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '5px',
-                                    padding: '0.5rem 1rem',
-                                    cursor: 'pointer',
-                                }}
-                                onClick={() => handleRemove(jersey.id)}
-                            >
-                                Remove
-                            </button>
-                        </div>
+                                    </Typography>
+                                    <Typography variant="body1" color="text.secondary">
+                                        ${jersey.price}
+                                    </Typography>
+                                </CardContent>
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    onClick={() => handleRemove(jersey.id)}
+                                    sx={{ m: 2 }}
+                                >
+                                    Remove
+                                </Button>
+                            </Card>
+                        </Grid>
                     ))}
-                </div>
+                </Grid>
             )}
-        </main>
+        </Container>
     );
 }
 

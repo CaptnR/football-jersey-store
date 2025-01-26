@@ -1,6 +1,25 @@
+// Updated AdminDashboardPage.js with Material-UI components and styling
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import {
+    Container,
+    Typography,
+    Grid,
+    Card,
+    CardContent,
+    Table,
+    TableHead,
+    TableBody,
+    TableRow,
+    TableCell,
+    Select,
+    MenuItem,
+    Alert,
+    CircularProgress,
+    Divider,
+} from '@mui/material';
 
 function AdminDashboardPage() {
     const navigate = useNavigate();
@@ -11,13 +30,16 @@ function AdminDashboardPage() {
         pending_orders: 0,
     });
     const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         const fetchDashboardData = async () => {
             const token = localStorage.getItem('token'); // Get token from localStorage
             if (!token) {
-                alert('You need to log in as an admin.');
+                setError('You need to log in as an admin.');
                 navigate('/login'); // Redirect to login if not authenticated
+                setLoading(false);
                 return;
             }
 
@@ -37,9 +59,11 @@ function AdminDashboardPage() {
                     },
                 });
                 setOrders(ordersResponse.data);
-            } catch (error) {
-                console.error('Error fetching admin data:', error.response || error.message);
-                alert('Failed to load admin dashboard data.');
+            } catch (err) {
+                console.error('Error fetching admin data:', err.response || err.message);
+                setError('Failed to load admin dashboard data.');
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -54,74 +78,97 @@ function AdminDashboardPage() {
                     Authorization: `Token ${token}`, // Include token in Authorization header
                 },
             });
-            alert('Order status updated successfully.');
             setOrders((prevOrders) =>
                 prevOrders.map((order) =>
                     order.id === orderId ? { ...order, status } : order
                 )
             );
-        } catch (error) {
-            console.error('Error updating order status:', error.response || error.message);
+        } catch (err) {
+            console.error('Error updating order status:', err.response || err.message);
         }
     };
 
+    if (loading) {
+        return (
+            <Container maxWidth="md" sx={{ mt: 4, textAlign: 'center' }}>
+                <CircularProgress />
+            </Container>
+        );
+    }
+
     return (
-        <main className="container">
-            <header>
-                <h1>Admin Dashboard</h1>
-            </header>
-            <section>
-                <h2>Key Metrics</h2>
-                <ul>
-                    <li>Total Sales: ${metrics.total_sales.toFixed(2)}</li>
-                    <li>Total Users: {metrics.total_users}</li>
-                    <li>Total Orders: {metrics.total_orders}</li>
-                    <li>Pending Orders: {metrics.pending_orders}</li>
-                </ul>
-            </section>
-            <section>
-                <h2>Manage Orders</h2>
-                {orders.length === 0 ? (
-                    <p>No orders available.</p>
-                ) : (
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Order ID</th>
-                                <th>User</th>
-                                <th>Status</th>
-                                <th>Total Price</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {orders.map((order) => (
-                                <tr key={order.id}>
-                                    <td>{order.id}</td>
-                                    <td>{order.user}</td>
-                                    <td>{order.status}</td>
-                                    <td>${order.total_price}</td>
-                                    <td>
-                                        <select
-                                            value={order.status}
-                                            onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                                        >
-                                            <option value="Pending">Pending</option>
-                                            <option value="Shipped">Shipped</option>
-                                            <option value="Delivered">Delivered</option>
-                                            <option value="Cancelled">Cancelled</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </section>
-            <footer>
-                <p>&copy; 2023 Jersey Store</p>
-            </footer>
-        </main>
+        <Container maxWidth="lg" sx={{ mt: 4 }}>
+            <Typography variant="h4" gutterBottom>
+                Admin Dashboard
+            </Typography>
+
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                </Alert>
+            )}
+
+            {/* Metrics Section */}
+            <Grid container spacing={4} sx={{ mb: 4 }}>
+                {Object.entries(metrics).map(([key, value]) => (
+                    <Grid item xs={12} sm={6} md={3} key={key}>
+                        <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
+                            <CardContent>
+                                <Typography variant="h6" gutterBottom>
+                                    {key.replace('_', ' ').toUpperCase()}
+                                </Typography>
+                                <Typography variant="h5">
+                                    {key === 'total_sales' ? `$${value.toFixed(2)}` : value}
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                ))}
+            </Grid>
+
+            {/* Orders Section */}
+            <Typography variant="h5" gutterBottom>
+                Manage Orders
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            {orders.length === 0 ? (
+                <Alert severity="info">No orders available.</Alert>
+            ) : (
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Order ID</TableCell>
+                            <TableCell>User</TableCell>
+                            <TableCell>Status</TableCell>
+                            <TableCell>Total Price</TableCell>
+                            <TableCell>Actions</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {orders.map((order) => (
+                            <TableRow key={order.id}>
+                                <TableCell>{order.id}</TableCell>
+                                <TableCell>{order.user}</TableCell>
+                                <TableCell>{order.status}</TableCell>
+                                <TableCell>${order.total_price}</TableCell>
+                                <TableCell>
+                                    <Select
+                                        value={order.status}
+                                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                                        sx={{ width: '150px' }}
+                                    >
+                                        <MenuItem value="Pending">Pending</MenuItem>
+                                        <MenuItem value="Shipped">Shipped</MenuItem>
+                                        <MenuItem value="Delivered">Delivered</MenuItem>
+                                        <MenuItem value="Cancelled">Cancelled</MenuItem>
+                                    </Select>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            )}
+        </Container>
     );
 }
 

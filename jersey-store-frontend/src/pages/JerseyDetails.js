@@ -1,13 +1,29 @@
+// Updated JerseyDetails.js with fixes for Axios 401 error
+
 import React, { useEffect, useState, useContext } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchJerseys, fetchPlayers, addToWishlist, removeFromWishlist } from '../api/api';
 import { CartContext } from '../context/CartContext';
+import {
+    Container,
+    Box,
+    Typography,
+    Grid,
+    Card,
+    CardMedia,
+    CardContent,
+    Button,
+    CircularProgress,
+    Alert,
+} from '@mui/material';
 
 function JerseyDetails() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [jersey, setJersey] = useState(null);
     const [player, setPlayer] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const { addToCart } = useContext(CartContext);
 
     // Wishlist state
@@ -16,6 +32,12 @@ function JerseyDetails() {
 
     // Fetch jersey and player details
     useEffect(() => {
+        if (!token) {
+            console.error("No token found. Redirecting to login.");
+            navigate('/login');
+            return;
+        }
+
         fetchJerseys()
             .then((response) => {
                 const selectedJersey = response.data.find((item) => item.id === parseInt(id));
@@ -31,13 +53,26 @@ function JerseyDetails() {
             })
             .catch((error) => {
                 console.error("Error fetching details:", error);
+                if (error.response?.status === 401) {
+                    alert("Session expired. Please log in again.");
+                    localStorage.removeItem('token'); // Clear invalid token
+                    navigate('/login');
+                } else {
+                    setError('Failed to fetch jersey details.');
+                }
                 setLoading(false);
             });
-    }, [id, jersey?.player]);
+    }, [id, jersey?.player, navigate, token]);
 
     // Handle wishlist functionality
     const handleWishlist = async () => {
         try {
+            if (!token) {
+                alert("You need to log in to manage your wishlist.");
+                navigate('/login');
+                return;
+            }
+
             if (isWishlisted) {
                 await removeFromWishlist(token, jersey.id);
             } else {
@@ -49,49 +84,92 @@ function JerseyDetails() {
         }
     };
 
-    if (loading) return <p>Loading...</p>;
-    if (!jersey || !player) return <p>Jersey not found.</p>;
+    if (loading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (error) {
+        return (
+            <Container maxWidth="sm">
+                <Alert severity="error" sx={{ mt: 4 }}>
+                    {error}
+                </Alert>
+            </Container>
+        );
+    }
+
+    if (!jersey || !player) {
+        return (
+            <Container maxWidth="sm">
+                <Alert severity="error" sx={{ mt: 4 }}>
+                    Jersey not found.
+                </Alert>
+            </Container>
+        );
+    }
 
     return (
-        <main className="container">
-            <div className="card" style={{ display: 'flex', gap: '20px', padding: '20px' }}>
-                <img
-                    src={jersey.image}
+        <Container maxWidth="md" sx={{ mt: 4 }}>
+            <Card sx={{ display: 'flex', gap: 2, p: 2 }}>
+                <CardMedia
+                    component="img"
+                    sx={{ width: 300, borderRadius: 2, objectFit: 'cover' }}
+                    image={jersey.image}
                     alt={`${player.name} Jersey`}
-                    style={{
-                        width: '300px',
-                        borderRadius: '8px',
-                        objectFit: 'cover',
-                    }}
                 />
-                <div>
-                    <h1>{player.name} Jersey</h1>
-                    <p><strong>Price:</strong> ${jersey.price}</p>
-                    <p><strong>Team:</strong> {player.team?.name || "Unknown Team"}</p>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <button
-                            onClick={() => addToCart(jersey)}
-                            className="button-primary"
-                        >
-                            Add to Cart
-                        </button>
-                        <Link
-                            to="/customize"
-                            state={{ jerseyId: jersey.id }}
-                            className="button-secondary"
-                        >
-                            Customize Jersey
-                        </Link>
-                        <button
-                            onClick={handleWishlist}
-                            className={`button-${isWishlisted ? 'secondary' : 'primary'}`}
-                        >
-                            {isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </main>
+
+                <CardContent>
+                    <Typography variant="h4" gutterBottom>
+                        {player.name} Jersey
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 1 }}>
+                        <strong>Price:</strong> ${jersey.price}
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 3 }}>
+                        <strong>Team:</strong> {player.team?.name || "Unknown Team"}
+                    </Typography>
+
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={4}>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                fullWidth
+                                onClick={() => addToCart(jersey)}
+                            >
+                                Add to Cart
+                            </Button>
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                            <Button
+                                variant="outlined"
+                                color="secondary"
+                                fullWidth
+                                component={Link}
+                                to="/customize"
+                                state={{ jerseyId: jersey.id }}
+                            >
+                                Customize Jersey
+                            </Button>
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                            <Button
+                                variant={isWishlisted ? "outlined" : "contained"}
+                                color={isWishlisted ? "secondary" : "primary"}
+                                fullWidth
+                                onClick={handleWishlist}
+                            >
+                                {isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </CardContent>
+            </Card>
+        </Container>
     );
 }
 
