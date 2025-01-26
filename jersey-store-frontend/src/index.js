@@ -1,6 +1,10 @@
+// Updated index.js with Material-UI theme integration
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, CssBaseline } from '@mui/material'; // Import MUI ThemeProvider and CssBaseline
+import theme from './theme/theme'; // Import the custom theme
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import DashboardPage from './pages/DashboardPage';
@@ -51,8 +55,11 @@ function App() {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <React.StrictMode>
-        <CartProvider>
-            <App />
-        </CartProvider>
+        <ThemeProvider theme={theme}> {/* Apply the Material-UI theme */}
+            <CssBaseline /> {/* Normalize and reset CSS styles */}
+            <CartProvider>
+                <App />
+            </CartProvider>
+        </ThemeProvider>
     </React.StrictMode>
 );
