@@ -1,6 +1,15 @@
+// Updated Recommendations.js with Material-UI components and styling
+
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import {
+    Box,
+    Card,
+    CardMedia,
+    CardContent,
+    Typography,
+} from '@mui/material';
 
 function Recommendations() {
     const [recommendations, setRecommendations] = useState([]);
@@ -28,24 +37,47 @@ function Recommendations() {
     }
 
     return (
-        <section style={{ marginTop: '2rem' }}>
-            <h2>Recommended for You</h2>
-            <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto' }}>
+        <Box sx={{ mt: 4 }}>
+            <Typography variant="h5" gutterBottom>
+                Recommended for You
+            </Typography>
+            <Box
+                sx={{
+                    display: 'flex',
+                    gap: 2,
+                    overflowX: 'auto',
+                    py: 2,
+                }}
+            >
                 {recommendations.map((jersey) => (
-                    <div key={jersey.id} style={{ flex: '0 0 auto', width: '200px', textAlign: 'center' }}>
-                        <Link to={`/jersey/${jersey.id}`}>
-                            <img
-                                src={jersey.image}
-                                alt={jersey.player.name}
-                                style={{ width: '100%', height: 'auto', borderRadius: '8px' }}
-                            />
-                            <p>{jersey.player.name}</p>
-                            <p>${jersey.price}</p>
-                        </Link>
-                    </div>
+                    <Card
+                        key={jersey.id}
+                        sx={{ flex: '0 0 auto', width: 200, textAlign: 'center', boxShadow: 3 }}
+                    >
+                        <CardMedia
+                            component="img"
+                            height="140"
+                            image={jersey.image}
+                            alt={jersey.player.name}
+                            sx={{ borderRadius: 2, objectFit: 'cover' }}
+                        />
+                        <CardContent>
+                            <Typography
+                                variant="body1"
+                                component={Link}
+                                to={`/jersey/${jersey.id}`}
+                                sx={{ textDecoration: 'none', color: 'primary.main', fontWeight: 'bold' }}
+                            >
+                                {jersey.player.name}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                ${jersey.price}
+                            </Typography>
+                        </CardContent>
+                    </Card>
                 ))}
-            </div>
-        </section>
+            </Box>
+        </Box>
     );
 }
 

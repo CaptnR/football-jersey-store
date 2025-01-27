@@ -1,4 +1,14 @@
+// Updated SearchFilterBar.js with Material-UI components and styling
+
 import React, { useState } from 'react';
+import {
+    Box,
+    TextField,
+    Select,
+    MenuItem,
+    Button,
+    //Typography,
+} from '@mui/material';
 
 function SearchFilterBar({ onSearch, onFilter }) {
     const [searchQuery, setSearchQuery] = useState('');
@@ -16,40 +26,77 @@ function SearchFilterBar({ onSearch, onFilter }) {
     };
 
     return (
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-            <input
-                type="text"
-                placeholder="Search by player or team..."
+        <Box
+            sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                gap: 2,
+                mb: 4,
+                alignItems: 'center',
+            }}
+        >
+            <TextField
+                label="Search by player or team"
+                variant="outlined"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ flex: 1 }}
             />
-            <select value={league} onChange={(e) => setLeague(e.target.value)}>
-                <option value="">Select League</option>
-                <option value="Premier League">Premier League</option>
-                <option value="La Liga">La Liga</option>
-                <option value="Serie A">Serie A</option>
-            </select>
-            <select value={team} onChange={(e) => setTeam(e.target.value)}>
-                <option value="">Select Team</option>
-                <option value="1">Team 1</option>
-                <option value="2">Team 2</option>
-                <option value="3">Team 3</option>
-            </select>
-            <input
+            <Select
+                value={league}
+                onChange={(e) => setLeague(e.target.value)}
+                displayEmpty
+                sx={{ minWidth: 150 }}
+            >
+                <MenuItem value="">Select League</MenuItem>
+                <MenuItem value="Premier League">Premier League</MenuItem>
+                <MenuItem value="La Liga">La Liga</MenuItem>
+                <MenuItem value="Serie A">Serie A</MenuItem>
+            </Select>
+            <Select
+                value={team}
+                onChange={(e) => setTeam(e.target.value)}
+                displayEmpty
+                sx={{ minWidth: 150 }}
+            >
+                <MenuItem value="">Select Team</MenuItem>
+                <MenuItem value="1">Team 1</MenuItem>
+                <MenuItem value="2">Team 2</MenuItem>
+                <MenuItem value="3">Team 3</MenuItem>
+            </Select>
+            <TextField
+                label="Min Price"
                 type="number"
-                placeholder="Min Price"
+                variant="outlined"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
+                sx={{ width: 120 }}
             />
-            <input
+            <TextField
+                label="Max Price"
                 type="number"
-                placeholder="Max Price"
+                variant="outlined"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
+                sx={{ width: 120 }}
             />
-            <button onClick={handleSearch}>Search</button>
-            <button onClick={handleFilter}>Filter</button>
-        </div>
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSearch}
+                sx={{ whiteSpace: 'nowrap' }}
+            >
+                Search
+            </Button>
+            <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleFilter}
+                sx={{ whiteSpace: 'nowrap' }}
+            >
+                Filter
+            </Button>
+        </Box>
     );
 }
 

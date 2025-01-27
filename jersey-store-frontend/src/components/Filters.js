@@ -1,7 +1,20 @@
+// Updated Filters.js with Material-UI components and styling
+
 import React, { useEffect, useState } from 'react';
+import {
+    Box,
+    Select,
+    MenuItem,
+    Slider,
+    Button,
+    IconButton,
+    Typography,
+    Popover,
+} from '@mui/material';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 function Filters({ onFilter, metadata }) {
-    const [isExpanded, setIsExpanded] = useState(false); // State for filter expansion
+    const [anchorEl, setAnchorEl] = useState(null);
     const [selectedFilters, setSelectedFilters] = useState({
         player: '',
         league: '',
@@ -20,8 +33,12 @@ function Filters({ onFilter, metadata }) {
         }
     }, [metadata]);
 
-    const toggleFilters = () => {
-        setIsExpanded(!isExpanded);
+    const handleOpen = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleClose = () => {
+        setAnchorEl(null);
     };
 
     const handleInputChange = (e) => {
@@ -33,147 +50,123 @@ function Filters({ onFilter, metadata }) {
     };
 
     const handleFilterApply = () => {
-        onFilter(selectedFilters); // Apply the filters
-        setIsExpanded(false); // Collapse the filters
+        onFilter(selectedFilters);
+        handleClose();
     };
+
+    const open = Boolean(anchorEl);
 
     if (!metadata) return null;
 
     return (
-        <div style={{ position: 'relative' }}>
+        <Box>
             {/* Filter Icon */}
-            <button
-                onClick={toggleFilters}
-                style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '24px',
-                }}
-            >
-                ⚙️ {/* Replace with a better icon if needed */}
-            </button>
+            <IconButton onClick={handleOpen} color="primary">
+                <FilterListIcon />
+            </IconButton>
 
             {/* Expandable Filters */}
-            {isExpanded && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: '40px',
-                        left: 0,
-                        background: '#fff',
-                        border: '1px solid #ccc',
-                        borderRadius: '5px',
-                        padding: '20px',
-                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                        zIndex: 10,
-                    }}
-                >
+            <Popover
+                open={open}
+                anchorEl={anchorEl}
+                onClose={handleClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            >
+                <Box sx={{ p: 2, width: 300 }}>
+                    <Typography variant="h6" gutterBottom>
+                        Filters
+                    </Typography>
+
                     {/* Player Filter */}
-                    <select
+                    <Select
                         name="player"
                         value={selectedFilters.player}
                         onChange={handleInputChange}
-                        style={{
-                            padding: '10px',
-                            marginBottom: '10px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            width: '100%',
-                        }}
+                        fullWidth
+                        displayEmpty
+                        sx={{ mb: 2 }}
                     >
-                        <option value="">Select Player</option>
+                        <MenuItem value="">Select Player</MenuItem>
                         {metadata.players.map((player) => (
-                            <option key={player} value={player}>
+                            <MenuItem key={player} value={player}>
                                 {player}
-                            </option>
+                            </MenuItem>
                         ))}
-                    </select>
+                    </Select>
 
                     {/* League Filter */}
-                    <select
+                    <Select
                         name="league"
                         value={selectedFilters.league}
                         onChange={handleInputChange}
-                        style={{
-                            padding: '10px',
-                            marginBottom: '10px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            width: '100%',
-                        }}
+                        fullWidth
+                        displayEmpty
+                        sx={{ mb: 2 }}
                     >
-                        <option value="">Select League</option>
+                        <MenuItem value="">Select League</MenuItem>
                         {metadata.leagues.map((league) => (
-                            <option key={league} value={league}>
+                            <MenuItem key={league} value={league}>
                                 {league}
-                            </option>
+                            </MenuItem>
                         ))}
-                    </select>
+                    </Select>
 
                     {/* Team Filter */}
-                    <select
+                    <Select
                         name="team"
                         value={selectedFilters.team}
                         onChange={handleInputChange}
-                        style={{
-                            padding: '10px',
-                            marginBottom: '10px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            width: '100%',
-                        }}
+                        fullWidth
+                        displayEmpty
+                        sx={{ mb: 2 }}
                     >
-                        <option value="">Select Team</option>
+                        <MenuItem value="">Select Team</MenuItem>
                         {metadata.teams.map((team) => (
-                            <option key={team} value={team}>
+                            <MenuItem key={team} value={team}>
                                 {team}
-                            </option>
+                            </MenuItem>
                         ))}
-                    </select>
+                    </Select>
 
                     {/* Price Range */}
-                    <div>
-                        <label>Price Range:</label>
-                        <input
-                            type="range"
+                    <Box sx={{ mb: 2 }}>
+                        <Typography gutterBottom>
+                            Price Range: ${selectedFilters.minPrice} - ${selectedFilters.maxPrice}
+                        </Typography>
+                        <Slider
                             name="minPrice"
-                            min={metadata.price_range.min}
-                            max={metadata.price_range.max}
                             value={selectedFilters.minPrice}
-                            onChange={handleInputChange}
-                        />
-                        <input
-                            type="range"
-                            name="maxPrice"
+                            onChange={(e, newValue) =>
+                                setSelectedFilters((prev) => ({ ...prev, minPrice: newValue }))
+                            }
                             min={metadata.price_range.min}
                             max={metadata.price_range.max}
-                            value={selectedFilters.maxPrice}
-                            onChange={handleInputChange}
+                            valueLabelDisplay="auto"
                         />
-                        <p>
-                            ${selectedFilters.minPrice} - ${selectedFilters.maxPrice}
-                        </p>
-                    </div>
+                        <Slider
+                            name="maxPrice"
+                            value={selectedFilters.maxPrice}
+                            onChange={(e, newValue) =>
+                                setSelectedFilters((prev) => ({ ...prev, maxPrice: newValue }))
+                            }
+                            min={metadata.price_range.min}
+                            max={metadata.price_range.max}
+                            valueLabelDisplay="auto"
+                        />
+                    </Box>
 
                     {/* Apply Filters */}
-                    <button
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        fullWidth
                         onClick={handleFilterApply}
-                        style={{
-                            marginTop: '10px',
-                            padding: '10px 20px',
-                            borderRadius: '5px',
-                            background: '#007bff',
-                            color: '#fff',
-                            border: 'none',
-                            cursor: 'pointer',
-                        }}
                     >
                         Apply Filters
-                    </button>
-                </div>
-            )}
-        </div>
+                    </Button>
+                </Box>
+            </Popover>
+        </Box>
     );
 }
 
