@@ -2,93 +2,114 @@
 
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { setAuthToken } from '../api/api';
-import { CartContext } from '../context/CartContext';
 import {
     AppBar,
     Toolbar,
     Typography,
-    Button,
-    Box,
-    Badge,
     IconButton,
-    //MenuItem,
+    Box,
+    Button,
+    Badge,
 } from '@mui/material';
+import { CartContext } from '../context/CartContext';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import PersonIcon from '@mui/icons-material/Person';
 
 function Navbar() {
-    const navigate = useNavigate(); // React Router hook to programmatically navigate between routes
-    const { cart } = useContext(CartContext); // Access cart context to get the number of items in the cart
+    const { cartItems = [] } = useContext(CartContext);
+    const navigate = useNavigate();
+    const token = localStorage.getItem('token');
 
-    // Handle logout functionality
     const handleLogout = () => {
-        localStorage.removeItem('token'); // Clear token from localStorage to log out the user
-        localStorage.removeItem('isAdmin'); // Clear admin status if stored
-        setAuthToken(null); // Reset Axios authorization header
-        alert('You have been logged out.'); // Notify the user
-        navigate('/login'); // Redirect the user to the login page
+        localStorage.removeItem('token');
+        localStorage.removeItem('isAdmin');
+        navigate('/login');
     };
 
-    // Check if the user is logged in by verifying the presence of a token
-    const isLoggedIn = !!localStorage.getItem('token');
-    // Check if the logged-in user is an admin
-    const isAdmin = localStorage.getItem('isAdmin') === 'true';
-
     return (
-        <AppBar position="static" sx={{ backgroundColor: 'primary.main' }}> {/* Material-UI AppBar for consistent navbar styling */}
-            <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}> {/* Align navbar content */}
-                {/* Branding Section */}
-                <Typography
-                    variant="h6"
-                    component={Link}
-                    to="/"
-                    sx={{ textDecoration: 'none', color: 'inherit', whiteSpace: 'nowrap', flexGrow: 1 }}
-                >
-                    Football Jersey Store
-                </Typography>
+        <AppBar position="sticky" sx={{ bgcolor: 'white', color: 'black', boxShadow: 1 }}>
+            <Toolbar sx={{ justifyContent: 'space-between' }}>
+                {/* Logo/Brand */}
+                <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <Typography variant="h5" component="div" sx={{ 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1
+                    }}>
+                        Jersey Store
+                    </Typography>
+                </Link>
 
-                {/* Navigation Links aligned to the right */}
-                <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', whiteSpace: 'nowrap' }}> {/* Box for consistent spacing between links */}
-                    {isLoggedIn && !isAdmin && ( /* Links for logged-in regular users */
+                {/* Navigation Links */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {token && (
                         <>
-                            <Button color="inherit" component={Link} to="/dashboard"> {/* User Dashboard Link */}
-                                Dashboard
+                            <Button
+                                component={Link}
+                                to="/"
+                                color="inherit"
+                                sx={{ fontWeight: 500 }}
+                            >
+                                Shop
                             </Button>
-                            <Button color="inherit" component={Link} to="/wishlist"> {/* Wishlist Link */}
-                                Wishlist
-                            </Button>
-                            <Button color="inherit" component={Link} to="/orders"> {/* My Orders Link */}
-                                My Orders
-                            </Button>
-                            <IconButton color="inherit" component={Link} to="/cart"> {/* Cart Link with item count badge */}
-                                <Badge badgeContent={cart.length} color="error"> {/* Show number of items in the cart */}
+
+                            <IconButton
+                                component={Link}
+                                to="/wishlist"
+                                color="inherit"
+                                size="large"
+                            >
+                                <FavoriteIcon />
+                            </IconButton>
+
+                            <IconButton
+                                component={Link}
+                                to="/cart"
+                                color="inherit"
+                                size="large"
+                            >
+                                <Badge badgeContent={cartItems?.length || 0} color="primary">
                                     <ShoppingCartIcon />
                                 </Badge>
                             </IconButton>
+
+                            <IconButton
+                                component={Link}
+                                to="/dashboard"
+                                color="inherit"
+                                size="large"
+                            >
+                                <PersonIcon />
+                            </IconButton>
+
+                            <Button
+                                color="inherit"
+                                onClick={handleLogout}
+                                sx={{ fontWeight: 500 }}
+                            >
+                                Logout
+                            </Button>
                         </>
                     )}
 
-                    {isAdmin && ( /* Links for admin users */
+                    {!token && (
                         <>
-                            <Button color="inherit" component={Link} to="/admin/dashboard"> {/* Admin Dashboard Link */}
-                                Admin Dashboard
-                            </Button>
-                            <Button color="inherit" component={Link} to="/admin/orders"> {/* Admin Orders Link */}
-                                Admin Orders
-                            </Button>
-                        </>
-                    )}
-
-                    {isLoggedIn ? ( /* Logout button for logged-in users */
-                        <Button color="inherit" onClick={handleLogout}> {/* Trigger logout */}
-                            Logout
-                        </Button>
-                    ) : ( /* Links for non-logged-in users */
-                        <>
-                            <Button color="inherit" component={Link} to="/login"> {/* Login Link */}
+                            <Button
+                                component={Link}
+                                to="/login"
+                                color="inherit"
+                                sx={{ fontWeight: 500 }}
+                            >
                                 Login
                             </Button>
-                            <Button color="inherit" component={Link} to="/signup"> {/* Signup Link */}
+                            <Button
+                                component={Link}
+                                to="/signup"
+                                color="inherit"
+                                sx={{ fontWeight: 500 }}
+                            >
                                 Sign Up
                             </Button>
                         </>

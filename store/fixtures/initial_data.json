@@ -1,0 +1,140 @@
+[
+    {
+        "model": "store.team",
+        "pk": 1,
+        "fields": {
+            "name": "Manchester United",
+            "league": "Premier League",
+            "logo": "team_logos/man_utd.png"
+        }
+    },
+    {
+        "model": "store.team",
+        "pk": 2,
+        "fields": {
+            "name": "Real Madrid",
+            "league": "La Liga",
+            "logo": "team_logos/real_madrid.png"
+        }
+    },
+    {
+        "model": "store.team",
+        "pk": 3,
+        "fields": {
+            "name": "Bayern Munich",
+            "league": "Bundesliga",
+            "logo": "team_logos/bayern.png"
+        }
+    },
+    {
+        "model": "store.team",
+        "pk": 4,
+        "fields": {
+            "name": "Paris Saint-Germain",
+            "league": "Ligue 1",
+            "logo": "team_logos/psg.png"
+        }
+    },
+    {
+        "model": "store.player",
+        "pk": 1,
+        "fields": {
+            "name": "Marcus Rashford",
+            "team": 1
+        }
+    },
+    {
+        "model": "store.player",
+        "pk": 2,
+        "fields": {
+            "name": "Bruno Fernandes",
+            "team": 1
+        }
+    },
+    {
+        "model": "store.player",
+        "pk": 3,
+        "fields": {
+            "name": "Jude Bellingham",
+            "team": 2
+        }
+    },
+    {
+        "model": "store.player",
+        "pk": 4,
+        "fields": {
+            "name": "Vinicius Jr",
+            "team": 2
+        }
+    },
+    {
+        "model": "store.player",
+        "pk": 5,
+        "fields": {
+            "name": "Harry Kane",
+            "team": 3
+        }
+    },
+    {
+        "model": "store.player",
+        "pk": 6,
+        "fields": {
+            "name": "Kylian Mbappe",
+            "team": 4
+        }
+    },
+    {
+        "model": "store.jersey",
+        "pk": 1,
+        "fields": {
+            "player": 1,
+            "price": "89.99",
+            "image": "jersey_images/man_utd_home.png"
+        }
+    },
+    {
+        "model": "store.jersey",
+        "pk": 2,
+        "fields": {
+            "player": 2,
+            "price": "89.99",
+            "image": "jersey_images/man_utd_away.png"
+        }
+    },
+    {
+        "model": "store.jersey",
+        "pk": 3,
+        "fields": {
+            "player": 3,
+            "price": "89.99",
+            "image": "jersey_images/real_madrid_home.png"
+        }
+    },
+    {
+        "model": "store.jersey",
+        "pk": 4,
+        "fields": {
+            "player": 4,
+            "price": "89.99",
+            "image": "jersey_images/real_madrid_away.png"
+        }
+    },
+    {
+        "model": "store.jersey",
+        "pk": 5,
+        "fields": {
+            "player": 5,
+            "price": "89.99",
+            "image": "jersey_images/bayern_home.png"
+        }
+    },
+    {
+        "model": "store.jersey",
+        "pk": 6,
+        "fields": {
+            "player": 6,
+            "price": "89.99",
+            "image": "jersey_images/psg_home.png"
+        }
+    }
+] 

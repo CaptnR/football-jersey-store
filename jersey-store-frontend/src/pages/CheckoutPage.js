@@ -24,7 +24,9 @@ function CheckoutPage() {
     const [success, setSuccess] = useState(false);
     const navigate = useNavigate();
 
-    const totalPrice = cart.reduce((total, item) => total + item.price * item.quantity, 0);
+    const total = cart.items.reduce((sum, item) => 
+        sum + (parseFloat(item.price) * item.quantity), 0
+    );
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -33,7 +35,7 @@ function CheckoutPage() {
 
         const orderDetails = {
             cart_items: cart, // Cart items
-            total_price: totalPrice, // Total price
+            total_price: total, // Total price
             payment: {
                 name_on_card: nameOnCard,
                 card_number: cardNumber,
@@ -80,26 +82,24 @@ function CheckoutPage() {
                 </Alert>
             )}
 
-            <Grid container spacing={4}>
-                {/* Order Summary */}
-                <Grid item xs={12} md={6}>
-                    <Typography variant="h5" gutterBottom>
-                        Order Summary
-                    </Typography>
-                    <Divider sx={{ mb: 2 }} />
-                    {cart.map((item) => (
-                        <Box key={item.id} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography>{item.player?.name || 'Jersey'}</Typography>
-                            <Typography>
-                                ${item.price} x {item.quantity}
-                            </Typography>
-                        </Box>
-                    ))}
-                    <Typography variant="h6" sx={{ mt: 2 }}>
-                        Total: ${totalPrice.toFixed(2)}
-                    </Typography>
-                </Grid>
+            {/* Cart Summary */}
+            <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" gutterBottom>
+                    Order Summary
+                </Typography>
+                {cart.items.map((item) => (
+                    <Box key={item.id} sx={{ mb: 2 }}>
+                        <Typography>
+                            {item.player?.name} - ${item.price} x {item.quantity}
+                        </Typography>
+                    </Box>
+                ))}
+                <Typography variant="h6">
+                    Total: ${total.toFixed(2)}
+                </Typography>
+            </Box>
 
+            <Grid container spacing={4}>
                 {/* Payment Form */}
                 <Grid item xs={12} md={6}>
                     <Typography variant="h5" gutterBottom>

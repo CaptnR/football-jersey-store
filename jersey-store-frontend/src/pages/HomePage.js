@@ -1,251 +1,333 @@
 // Updated HomePage.js with vertical layout for search and filter elements
 
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { isLoggedIn, fetchJerseys } from '../api/api';
-import Recommendations from '../components/Recommendations';
-import axios from 'axios';
+import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { fetchJerseys, addToWishlist, removeFromWishlist } from '../api/api';
+import { API } from '../api/api';
 import {
     Container,
     Box,
     Typography,
-    Button,
     Grid,
-    Card,
-    CardMedia,
-    CardContent,
+    Alert,
+    TextField,
+    FormControl,
+    InputLabel,
     Select,
     MenuItem,
     Slider,
-    CircularProgress,
+    Button,
+    IconButton,
+    Card
 } from '@mui/material';
+import JerseyCard from '../components/JerseyCard';
+import { CartContext } from '../context/CartContext';
+import SearchFilterBar from '../components/SearchFilterBar';
+import Spinner from '../components/Spinner';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 function HomePage() {
     const navigate = useNavigate();
     const [jerseys, setJerseys] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [wishlistedItems, setWishlistedItems] = useState(new Set());
+    const { addToCart } = useContext(CartContext);
     const [searchQuery, setSearchQuery] = useState('');
     const [isFilterExpanded, setIsFilterExpanded] = useState(false);
     const [filters, setFilters] = useState({
-        player: '',
         league: '',
         team: '',
-        minPrice: 0,
-        maxPrice: 100,
+        priceRange: [0, 1000],
     });
+    const [leagues, setLeagues] = useState([]);
+    const [teams, setTeams] = useState([]);
     const [metadata, setMetadata] = useState(null);
+    const isAuthenticated = !!localStorage.getItem('token');
+
+    // Add useEffect to watch for search and filter changes
+    useEffect(() => {
+        fetchAllJerseys();
+    }, [searchQuery, filters]);
+
+    const fetchAllJerseys = async () => {
+        try {
+            setLoading(true);
+            let url = '/jerseys/?';
+            
+            // Add search query if present
+            if (searchQuery.trim()) {
+                url += `search=${encodeURIComponent(searchQuery.trim())}&`;
+            }
+            
+            // Add filters
+            if (filters.league) {
+                url += `player__team__league=${encodeURIComponent(filters.league)}&`;
+            }
+            if (filters.team) {
+                url += `player__team__name=${encodeURIComponent(filters.team)}&`;
+            }
+            if (filters.priceRange && Array.isArray(filters.priceRange)) {
+                url += `min_price=${filters.priceRange[0]}&max_price=${filters.priceRange[1]}&`;
+            }
+            
+            console.log('Fetching jerseys with URL:', url); // Debug log
+            const response = await API.get(url);
+            setJerseys(response.data);
+        } catch (error) {
+            console.error('Error fetching jerseys:', error);
+            setError('Failed to load jerseys');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchWishlist = async () => {
+        try {
+            const response = await API.get('/wishlist/');
+            const wishlistIds = new Set(response.data.map(item => item.id));
+            setWishlistedItems(wishlistIds);
+        } catch (error) {
+            console.error('Error fetching wishlist:', error);
+        }
+    };
 
     useEffect(() => {
-        if (!isLoggedIn()) {
-            navigate('/login');
-        } else {
-            fetchAllJerseys();
-            fetchFilterMetadata();
+        fetchAllJerseys();
+        fetchFilterMetadata();
+        
+        // Only fetch wishlist if user is authenticated
+        if (isAuthenticated) {
+            fetchWishlist();
         }
-    }, [navigate]);
+    }, []);
 
-    const fetchAllJerseys = (query = '') => {
-        setLoading(true);
-        fetchJerseys(query)
-            .then((response) => {
-                setJerseys(response.data);
-                setLoading(false);
-            })
-            .catch((error) => {
-                console.error('Error fetching jerseys:', error);
-                setLoading(false);
-            });
+    const fetchFilterMetadata = async () => {
+        try {
+            const response = await API.get('/metadata/');
+            setLeagues(response.data.leagues);
+            setTeams(response.data.teams);
+            setMetadata(response.data);
+            setFilters((prevFilters) => ({
+                ...prevFilters,
+                minPrice: response.data.price_range.min,
+                maxPrice: response.data.price_range.max,
+            }));
+        } catch (error) {
+            console.error('Error fetching metadata:', error);
+        }
     };
 
-    const fetchFilterMetadata = () => {
-        const token = localStorage.getItem('token');
-        axios
-            .get('http://127.0.0.1:8000/api/metadata/', {
-                headers: {
-                    Authorization: `Token ${token}`,
-                },
-            })
-            .then((response) => {
-                setMetadata(response.data);
-                setFilters((prevFilters) => ({
-                    ...prevFilters,
-                    minPrice: response.data.price_range.min,
-                    maxPrice: response.data.price_range.max,
-                }));
-            })
-            .catch((error) => console.error('Error fetching metadata:', error));
+    const handleSearch = (event) => {
+        setSearchQuery(event.target.value);
     };
 
-    const handleSearch = (e) => {
-        setSearchQuery(e.target.value);
+    const handleFilterChange = (name, value) => {
+        setFilters(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
-    const handleSearchSubmit = (e) => {
-        e.preventDefault();
-        fetchAllJerseys(`?search=${searchQuery}`);
+    const handleAddToCart = (jersey) => {
+        if (!isAuthenticated) {
+            navigate('/login');
+            return;
+        }
+        addToCart(jersey);
     };
 
-    const handleFilterChange = (e) => {
-        const { name, value } = e.target;
-        setFilters((prevFilters) => ({ ...prevFilters, [name]: value }));
+    const handleWishlist = async (jersey) => {
+        if (!isAuthenticated) {
+            navigate('/login');
+            return;
+        }
+        
+        try {
+            if (wishlistedItems.has(jersey.id)) {
+                console.log('Removing jersey ID:', jersey.id);
+                const response = await removeFromWishlist(jersey.id);
+                
+                if (response.status === 204) {
+                    setWishlistedItems(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(jersey.id);
+                        return newSet;
+                    });
+                }
+            } else {
+                await addToWishlist(jersey.id);
+                setWishlistedItems(prev => new Set([...prev, jersey.id]));
+            }
+        } catch (error) {
+            console.error('Wishlist operation failed:', error.response?.data);
+        }
     };
-
-    const handleFilterApply = () => {
-        const filterQueries = [];
-        if (filters.player) filterQueries.push(`player__name=${filters.player}`);
-        if (filters.league) filterQueries.push(`player__team__league=${filters.league}`);
-        if (filters.team) filterQueries.push(`player__team__name=${filters.team}`);
-        if (filters.minPrice) filterQueries.push(`price__gte=${filters.minPrice}`);
-        if (filters.maxPrice) filterQueries.push(`price__lte=${filters.maxPrice}`);
-        const queryString = filterQueries.length ? `?${filterQueries.join('&')}` : '';
-        fetchAllJerseys(queryString);
-        setIsFilterExpanded(false);
-    };
-
-    if (loading) return <CircularProgress sx={{ display: 'block', margin: 'auto', mt: 4 }} />;
 
     return (
-        <Container maxWidth="lg">
-            {/* Hero Section */}
-            <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 2 }}>
-                <Typography variant="h2" color="primary" gutterBottom>
-                    Football Jersey Store
-                </Typography>
-                <Typography variant="body1" color="text.secondary" gutterBottom>
-                    Discover jerseys of your favorite teams and players.
-                </Typography>
-                <Recommendations />
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => navigate('/customize')}
-                    sx={{ mt: 2 }}
-                >
-                    Customize Jersey
-                </Button>
-            </Box>
+        <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh', pt: 4, pb: 8 }}>
+            <Container maxWidth="xl">
+                {/* Hero Section */}
+                <Box sx={{ mb: 6, textAlign: 'center' }}>
+                    <Typography 
+                        variant="h3" 
+                        component="h1" 
+                        sx={{ 
+                            fontWeight: 700,
+                            mb: 2,
+                            background: 'linear-gradient(45deg, #1a237e, #0d47a1)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            color: 'transparent',
+                        }}
+                    >
+                        Football Jersey Store
+                    </Typography>
+                    <Typography 
+                        variant="h6" 
+                        color="text.secondary"
+                        sx={{ maxWidth: 600, mx: 'auto', mb: 4 }}
+                    >
+                        Find authentic jerseys from your favorite teams and players
+                    </Typography>
+                    
+                    {!isAuthenticated && (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => navigate('/login')}
+                            sx={{ mt: 2 }}
+                        >
+                            Login to Shop
+                        </Button>
+                    )}
+                </Box>
 
-            {/* Search and Filter Section */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 4 }}>
-                <form onSubmit={handleSearchSubmit} style={{ width: '100%', textAlign: 'center', marginBottom: '16px' }}>
-                    <input
-                        type="text"
-                        placeholder="Search for jerseys by player or team..."
+                {/* Search and Filter */}
+                <Box sx={{ mb: 6 }}>
+                    <TextField
+                        fullWidth
+                        label="Search jerseys"
+                        variant="outlined"
                         value={searchQuery}
                         onChange={handleSearch}
-                        style={{ padding: '8px', width: '80%', marginBottom: '8px' }}
+                        sx={{ mb: 2 }}
                     />
-                    <Button type="submit" variant="contained" color="primary">
-                        Search
+                    
+                    <Button
+                        startIcon={<FilterListIcon />}
+                        onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                        sx={{ mb: 2 }}
+                    >
+                        Filters
                     </Button>
-                </form>
-                <Button
-                    variant="outlined"
-                    color="secondary"
-                    onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                    sx={{ mt: 2 }}
-                >
-                    Filters ⚙️
-                </Button>
-            </Box>
 
-            {/* Collapsible Filters */}
-            {isFilterExpanded && metadata && (
-                <Box sx={{ p: 2, borderRadius: 2, backgroundColor: 'background.paper', mb: 4 }}>
-                    <Select
-                        name="player"
-                        value={filters.player}
-                        onChange={handleFilterChange}
-                        displayEmpty
-                        fullWidth
-                        sx={{ mb: 2 }}
-                    >
-                        <MenuItem value="">Select Player</MenuItem>
-                        {metadata.players.map((player) => (
-                            <MenuItem key={player} value={player}>
-                                {player}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                    <Select
-                        name="league"
-                        value={filters.league}
-                        onChange={handleFilterChange}
-                        displayEmpty
-                        fullWidth
-                        sx={{ mb: 2 }}
-                    >
-                        <MenuItem value="">Select League</MenuItem>
-                        {metadata.leagues.map((league) => (
-                            <MenuItem key={league} value={league}>
-                                {league}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                    <Select
-                        name="team"
-                        value={filters.team}
-                        onChange={handleFilterChange}
-                        displayEmpty
-                        fullWidth
-                        sx={{ mb: 2 }}
-                    >
-                        <MenuItem value="">Select Team</MenuItem>
-                        {metadata.teams.map((team) => (
-                            <MenuItem key={team} value={team}>
-                                {team}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                        Price Range: ${filters.minPrice} - ${filters.maxPrice}
-                    </Typography>
-                    <Slider
-                        name="price"
-                        value={[filters.minPrice, filters.maxPrice]}
-                        onChange={(e, newValue) => {
-                            setFilters({ ...filters, minPrice: newValue[0], maxPrice: newValue[1] });
-                        }}
-                        min={metadata.price_range.min}
-                        max={metadata.price_range.max}
-                        valueLabelDisplay="auto"
-                    />
-                    <Button variant="contained" color="primary" onClick={handleFilterApply} sx={{ mt: 2 }}>
-                        Apply Filters
-                    </Button>
+                    {isFilterExpanded && (
+                        <Box sx={{ p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={4}>
+                                    <FormControl fullWidth>
+                                        <InputLabel>League</InputLabel>
+                                        <Select
+                                            value={filters.league}
+                                            onChange={(e) => handleFilterChange('league', e.target.value)}
+                                        >
+                                            <MenuItem value="">All Leagues</MenuItem>
+                                            {leagues.map(league => (
+                                                <MenuItem key={league} value={league}>{league}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={4}>
+                                    <FormControl fullWidth>
+                                        <InputLabel>Team</InputLabel>
+                                        <Select
+                                            value={filters.team}
+                                            onChange={(e) => handleFilterChange('team', e.target.value)}
+                                        >
+                                            <MenuItem value="">All Teams</MenuItem>
+                                            {teams.map(team => (
+                                                <MenuItem key={team} value={team}>{team}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <Typography gutterBottom>Price Range</Typography>
+                                    <Slider
+                                        value={filters.priceRange}
+                                        onChange={(e, newValue) => handleFilterChange('priceRange', newValue)}
+                                        valueLabelDisplay="auto"
+                                        min={0}
+                                        max={1000}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    )}
                 </Box>
-            )}
 
-            {/* Jersey Grid */}
-            <Grid container spacing={4}>
-                {jerseys.map((jersey) => (
-                    <Grid item xs={12} sm={6} md={4} key={jersey.id}>
-                        <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
-                            <CardMedia
-                                component="img"
-                                height="200"
-                                image={jersey.image}
-                                alt="Jersey"
-                            />
-                            <CardContent>
-                                <Typography variant="h6" gutterBottom>
-                                    ${jersey.price}
+                {/* Loading and Error States */}
+                {loading && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                        <Spinner />
+                    </Box>
+                )}
+                
+                {error && (
+                    <Alert severity="error" sx={{ mb: 4 }}>
+                        {error}
+                    </Alert>
+                )}
+
+                {/* Jersey Grid */}
+                {!loading && !error && (
+                    <>
+                        {jerseys.length > 0 ? (
+                            <Grid 
+                                container 
+                                spacing={2}
+                                sx={{
+                                    px: 2,
+                                    '& .MuiGrid-item': {
+                                        display: 'flex',
+                                        width: '20%'
+                                    }
+                                }}
+                            >
+                                {jerseys.map((jersey) => (
+                                    <Grid item xs={12} sm={6} md={2.4} key={jersey.id}>
+                                        <JerseyCard
+                                            jersey={jersey}
+                                            onAddToCart={handleAddToCart}
+                                            onAddToWishlist={handleWishlist}
+                                            isWishlisted={wishlistedItems.has(jersey.id)}
+                                            requiresAuth={!isAuthenticated}
+                                        />
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        ) : (
+                            <Box 
+                                sx={{ 
+                                    textAlign: 'center',
+                                    py: 8,
+                                    color: 'text.secondary'
+                                }}
+                            >
+                                <Typography variant="h6">
+                                    No jerseys found
                                 </Typography>
-                                <Button
-                                    component={Link}
-                                    to={`/jersey/${jersey.id}`}
-                                    variant="outlined"
-                                    color="primary"
-                                    fullWidth
-                                >
-                                    View Details
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                ))}
-            </Grid>
-        </Container>
+                                <Typography variant="body1">
+                                    Try adjusting your search or filters
+                                </Typography>
+                            </Box>
+                        )}
+                    </>
+                )}
+            </Container>
+        </Box>
     );
 }
 
