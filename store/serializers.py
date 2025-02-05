@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Team, Player, Jersey, Customization, Order, Payment
+from .models import Team, Player, Jersey, Customization, Order, Payment, Review
 
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,3 +52,14 @@ class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = ['id', 'order', 'name_on_card', 'card_number', 'expiration_date']
+
+class ReviewSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Review
+        fields = ['id', 'user_name', 'rating', 'comment', 'created_at']
+        read_only_fields = ['user_name', 'created_at']
+
+    def get_user_name(self, obj):
+        return obj.user.username

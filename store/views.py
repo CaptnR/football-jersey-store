@@ -4,8 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
-from .models import Team, Player, Jersey, Customization, Order, Payment, Wishlist
-from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer
+from .models import Team, Player, Jersey, Customization, Order, Payment, Wishlist, Review
+from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer, ReviewSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth.models import User
@@ -15,6 +15,8 @@ from .models import Jersey
 from django.http import JsonResponse
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets
+from rest_framework import serializers
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow public access
@@ -234,3 +236,20 @@ def dashboard_view(request):
         "wishlist": wishlist_data,
         "recommendations": recommendations_data,
     })
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        jersey_id = self.kwargs['jersey_id']
+        return Review.objects.filter(jersey_id=jersey_id)
+        
+    def perform_create(self, serializer):
+        jersey_id = self.kwargs['jersey_id']
+        
+        # Check if user already reviewed this jersey
+        if Review.objects.filter(user=self.request.user, jersey_id=jersey_id).exists():
+            raise serializers.ValidationError('You have already reviewed this jersey')
+            
+        serializer.save(user=self.request.user, jersey_id=jersey_id)

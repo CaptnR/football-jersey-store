@@ -23,10 +23,7 @@ class Jersey(models.Model):
     image = models.ImageField(upload_to='', blank=True, null=True)  # Save files directly in 'jerseys/'
 
     def get_image_url(self):
-        # Generate full URL for the image
-        if self.image:
-            return f"{settings.MEDIA_URL}{self.image.name}"  # Cleanly append MEDIA_URL and image name
-        return ''  # Return an empty string if no image is set
+        return f"{settings.MEDIA_URL}{self.image}" if self.image and self.image.name else settings.DEFAULT_JERSEY_IMAGE
 
 class Customization(models.Model):
     jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE)
@@ -73,4 +70,26 @@ class Wishlist(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s wishlist item: {self.jersey.player.name}"
+
+class Review(models.Model):
+    RATING_CHOICES = [
+        (1, '1 Star'),
+        (2, '2 Stars'),
+        (3, '3 Stars'),
+        (4, '4 Stars'),
+        (5, '5 Stars'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    jersey = models.ForeignKey('Jersey', on_delete=models.CASCADE, related_name='reviews')
+    rating = models.IntegerField(choices=RATING_CHOICES)
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'jersey')  # One review per jersey per user
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username}'s review of {self.jersey.player.name} jersey"
 

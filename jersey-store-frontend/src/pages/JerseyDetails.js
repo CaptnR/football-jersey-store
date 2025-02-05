@@ -1,9 +1,11 @@
-// Updated JerseyDetails.js with fixes for Axios 401 error
+// Updated JerseyDetails.js with fixes for Axios 401 error and review functionality
 
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchJerseys, fetchPlayers, addToWishlist, removeFromWishlist } from '../api/api';
 import { CartContext } from '../context/CartContext';
+import axios from 'axios';
+import ReviewForm from '../components/ReviewForm';
 import {
     Container,
     Box,
@@ -15,6 +17,7 @@ import {
     Button,
     CircularProgress,
     Alert,
+    Rating,
 } from '@mui/material';
 
 function JerseyDetails() {
@@ -25,10 +28,26 @@ function JerseyDetails() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const { addToCart } = useContext(CartContext);
+    const [reviews, setReviews] = useState([]);
 
     // Wishlist state
     const [isWishlisted, setIsWishlisted] = useState(false);
     const token = localStorage.getItem('token'); // Get token from localStorage
+
+    // Fetch reviews
+    const fetchReviews = useCallback(async () => {
+        try {
+            const response = await axios.get(
+                `http://127.0.0.1:8000/api/jerseys/${id}/reviews/`,
+                {
+                    headers: { Authorization: `Token ${token}` }
+                }
+            );
+            setReviews(response.data);
+        } catch (error) {
+            console.error('Error fetching reviews:', error);
+        }
+    }, [id, token]);
 
     // Fetch jersey and player details
     useEffect(() => {
@@ -43,7 +62,9 @@ function JerseyDetails() {
                 const selectedJersey = response.data.find((item) => item.id === parseInt(id));
                 setJersey(selectedJersey);
 
-                if (selectedJersey) return fetchPlayers();
+                if (selectedJersey) {
+                    return fetchPlayers();
+                }
                 return Promise.reject("Jersey not found");
             })
             .then((response) => {
@@ -63,6 +84,13 @@ function JerseyDetails() {
                 setLoading(false);
             });
     }, [id, jersey?.player, navigate, token]);
+
+    // Load reviews when component mounts
+    useEffect(() => {
+        if (token) {
+            fetchReviews();
+        }
+    }, [id, token, fetchReviews]);
 
     // Handle wishlist functionality
     const handleWishlist = async () => {
@@ -169,6 +197,29 @@ function JerseyDetails() {
                     </Grid>
                 </CardContent>
             </Card>
+
+            {/* Reviews Section */}
+            <Box sx={{ mt: 4 }}>
+                <Typography variant="h5" gutterBottom>
+                    Customer Reviews
+                </Typography>
+                <ReviewForm jerseyId={id} onReviewAdded={fetchReviews} />
+                
+                {reviews.map((review) => (
+                    <Card key={review.id} sx={{ mt: 2, p: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <Rating value={review.rating} readOnly />
+                            <Typography sx={{ ml: 2 }}>
+                                by {review.user_name}
+                            </Typography>
+                        </Box>
+                        <Typography variant="body1">{review.comment}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {new Date(review.created_at).toLocaleDateString()}
+                        </Typography>
+                    </Card>
+                ))}
+            </Box>
         </Container>
     );
 }

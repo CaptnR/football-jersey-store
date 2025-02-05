@@ -147,3 +147,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/jerseys/'  # URL prefix for media files
 MEDIA_ROOT = os.path.join(BASE_DIR, '')  # Directory where images are stored
+
+DEFAULT_JERSEY_IMAGE = '/media/default_jersey.jpg'  # Adjust path as needed
