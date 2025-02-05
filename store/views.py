@@ -59,7 +59,7 @@ class PlayerViewSet(ModelViewSet):
 class JerseyViewSet(viewsets.ModelViewSet):
     queryset = Jersey.objects.all()
     serializer_class = JerseySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     filter_backends = [SearchFilter, DjangoFilterBackend]
     search_fields = ['player__name', 'player__team__name', 'player__team__league']
     filterset_fields = ['player__team__league', 'player__team__name']
@@ -67,14 +67,32 @@ class JerseyViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Jersey.objects.select_related('player', 'player__team').all()
         
+        # Handle search
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            queryset = queryset.filter(
+                models.Q(player__name__icontains=search_query) |
+                models.Q(player__team__name__icontains=search_query) |
+                models.Q(player__team__league__icontains=search_query)
+            )
+        
         # Handle price range filter
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
         
         if min_price:
-            queryset = queryset.filter(price__gte=min_price)
+            try:
+                min_price = float(min_price)
+                queryset = queryset.filter(price__gte=min_price)
+            except (TypeError, ValueError):
+                pass
+                
         if max_price:
-            queryset = queryset.filter(price__lte=max_price)
+            try:
+                max_price = float(max_price)
+                queryset = queryset.filter(price__lte=max_price)
+            except (TypeError, ValueError):
+                pass
             
         return queryset
     
@@ -258,6 +276,8 @@ class WishlistView(APIView):
             )
         
 class FilterMetadataView(APIView):
+    permission_classes = [AllowAny]  # Allow public access
+    
     def get(self, request):
         players = Jersey.objects.values_list('player__name', flat=True).distinct()
         leagues = Jersey.objects.values_list('player__team__league', flat=True).distinct()

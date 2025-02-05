@@ -2,10 +2,9 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material'; // Import MUI ThemeProvider and CssBaseline
-import theme from './theme/theme'; // Import the custom theme
-import App from './App';  // Make sure App is properly imported
+import './index.css';
+import App from './App';
+import { BrowserRouter as Router } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 
 // Suppress ResizeObserver loop error
@@ -19,17 +18,11 @@ window.addEventListener("error", resizeObserverErrorHandler);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-    <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <CartProvider>
-            <BrowserRouter
-                future={{
-                    v7_startTransition: true,
-                    v7_relativeSplatPath: true
-                }}
-            >
+    <React.StrictMode>
+        <Router>
+            <CartProvider>
                 <App />
-            </BrowserRouter>
-        </CartProvider>
-    </ThemeProvider>
+            </CartProvider>
+        </Router>
+    </React.StrictMode>
 );

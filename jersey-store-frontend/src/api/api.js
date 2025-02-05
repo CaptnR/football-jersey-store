@@ -4,16 +4,39 @@ const API = axios.create({
     baseURL: 'http://127.0.0.1:8000/api/', // Your backend's base URL
 });
 
-// Add token to all requests
+// Add token to all requests except public endpoints
 API.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
-    if (token) {
+    const publicEndpoints = [
+        '/jerseys/',
+        '/metadata/',
+        '/login/',
+        '/signup/'
+    ];
+    
+    const isPublicEndpoint = publicEndpoints.some(endpoint => 
+        config.url.startsWith(endpoint) && config.method.toLowerCase() === 'get'
+    );
+
+    if (token && !isPublicEndpoint) {
         config.headers.Authorization = `Token ${token}`;
     }
     return config;
-}, (error) => {
-    return Promise.reject(error);
 });
+
+// Add response interceptor to handle unauthorized access
+API.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
+            // Store the current location
+            const currentPath = window.location.pathname;
+            // Redirect to login with return path
+            window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+        }
+        return Promise.reject(error);
+    }
+);
 
 export const loginUser = (data) => API.post('/login/', data);
 export const signupUser = (data) => API.post('/signup/', data);

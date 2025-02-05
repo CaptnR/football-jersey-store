@@ -26,6 +26,7 @@ function JerseyDetails() {
     const [error, setError] = useState(null);
     const { addToCart } = useContext(CartContext);
     const [reviews, setReviews] = useState([]);
+    const isAuthenticated = !!localStorage.getItem('token');
 
     // Wishlist state
     const [isWishlisted, setIsWishlisted] = useState(false);
@@ -57,24 +58,33 @@ function JerseyDetails() {
 
     // Fetch jersey and player details
     useEffect(() => {
-        const fetchJersey = async () => {
+        const fetchJerseyDetails = async () => {
             try {
+                setLoading(true);
                 const response = await axios.get(`http://127.0.0.1:8000/api/jerseys/${id}/`, {
                     headers: {
                         Authorization: `Token ${token}`
                     }
                 });
                 setJersey(response.data);
-                setLoading(false);
             } catch (error) {
-                console.error('Error fetching jersey:', error);
-                setError('Jersey not found');
+                if (error.response?.status === 401) {
+                    // Redirect to login if unauthorized
+                    navigate('/login', { 
+                        state: { from: `/jersey/${id}` },
+                        replace: true 
+                    });
+                    return;
+                }
+                setError('Failed to load jersey details');
+                console.error('Error fetching jersey details:', error);
+            } finally {
                 setLoading(false);
             }
         };
 
-        fetchJersey();
-    }, [id, token]);
+        fetchJerseyDetails();
+    }, [id, navigate, token]);
 
     // Load reviews when component mounts
     useEffect(() => {
@@ -86,13 +96,13 @@ function JerseyDetails() {
 
     // Handle wishlist functionality
     const handleWishlist = async () => {
+        if (!isAuthenticated) {
+            navigate('/login', { 
+                state: { from: `/jersey/${id}` }
+            });
+            return;
+        }
         try {
-            if (!token) {
-                alert("You need to log in to manage your wishlist.");
-                navigate('/login');
-                return;
-            }
-
             if (isWishlisted) {
                 await removeFromWishlist(token, jersey.id);
             } else {
@@ -102,6 +112,16 @@ function JerseyDetails() {
         } catch (error) {
             console.error('Error updating wishlist:', error.response || error.message);
         }
+    };
+
+    const handleAddToCart = () => {
+        if (!isAuthenticated) {
+            navigate('/login', { 
+                state: { from: `/jersey/${id}` }
+            });
+            return;
+        }
+        // ... rest of add to cart logic
     };
 
     if (loading) {
@@ -160,7 +180,7 @@ function JerseyDetails() {
                         <Button 
                             variant="contained" 
                             color="primary"
-                            onClick={() => addToCart(jersey)}
+                            onClick={handleAddToCart}
                         >
                             Add to Cart
                         </Button>

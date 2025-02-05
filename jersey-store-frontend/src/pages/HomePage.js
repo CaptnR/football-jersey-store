@@ -43,6 +43,12 @@ function HomePage() {
     const [leagues, setLeagues] = useState([]);
     const [teams, setTeams] = useState([]);
     const [metadata, setMetadata] = useState(null);
+    const isAuthenticated = !!localStorage.getItem('token');
+
+    // Add useEffect to watch for search and filter changes
+    useEffect(() => {
+        fetchAllJerseys();
+    }, [searchQuery, filters]);
 
     const fetchAllJerseys = async () => {
         try {
@@ -50,21 +56,22 @@ function HomePage() {
             let url = '/jerseys/?';
             
             // Add search query if present
-            if (searchQuery) {
-                url += `search=${searchQuery}&`;
+            if (searchQuery.trim()) {
+                url += `search=${encodeURIComponent(searchQuery.trim())}&`;
             }
             
             // Add filters
             if (filters.league) {
-                url += `player__team__league=${filters.league}&`;
+                url += `player__team__league=${encodeURIComponent(filters.league)}&`;
             }
             if (filters.team) {
-                url += `player__team__name=${filters.team}&`;
+                url += `player__team__name=${encodeURIComponent(filters.team)}&`;
             }
-            if (filters.priceRange) {
+            if (filters.priceRange && Array.isArray(filters.priceRange)) {
                 url += `min_price=${filters.priceRange[0]}&max_price=${filters.priceRange[1]}&`;
             }
             
+            console.log('Fetching jerseys with URL:', url); // Debug log
             const response = await API.get(url);
             setJerseys(response.data);
         } catch (error) {
@@ -75,37 +82,25 @@ function HomePage() {
         }
     };
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            navigate('/login');
-            return;
+    const fetchWishlist = async () => {
+        try {
+            const response = await API.get('/wishlist/');
+            const wishlistIds = new Set(response.data.map(item => item.id));
+            setWishlistedItems(wishlistIds);
+        } catch (error) {
+            console.error('Error fetching wishlist:', error);
         }
+    };
+
+    useEffect(() => {
         fetchAllJerseys();
         fetchFilterMetadata();
-    }, [navigate]);
-
-    useEffect(() => {
-        const fetchWishlist = async () => {
-            try {
-                const response = await API.get('/wishlist/');
-                const wishlistIds = new Set(response.data.map(item => item.id));
-                setWishlistedItems(wishlistIds);
-            } catch (error) {
-                console.error('Error fetching wishlist:', error);
-            }
-        };
-
-        if (localStorage.getItem('token')) {
+        
+        // Only fetch wishlist if user is authenticated
+        if (isAuthenticated) {
             fetchWishlist();
         }
     }, []);
-
-    useEffect(() => {
-        if (localStorage.getItem('token')) {
-            fetchAllJerseys();
-        }
-    }, [searchQuery, filters]);
 
     const fetchFilterMetadata = async () => {
         try {
@@ -134,7 +129,20 @@ function HomePage() {
         }));
     };
 
+    const handleAddToCart = (jersey) => {
+        if (!isAuthenticated) {
+            navigate('/login');
+            return;
+        }
+        addToCart(jersey);
+    };
+
     const handleWishlist = async (jersey) => {
+        if (!isAuthenticated) {
+            navigate('/login');
+            return;
+        }
+        
         try {
             if (wishlistedItems.has(jersey.id)) {
                 console.log('Removing jersey ID:', jersey.id);
@@ -182,6 +190,17 @@ function HomePage() {
                     >
                         Find authentic jerseys from your favorite teams and players
                     </Typography>
+                    
+                    {!isAuthenticated && (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => navigate('/login')}
+                            sx={{ mt: 2 }}
+                        >
+                            Login to Shop
+                        </Button>
+                    )}
                 </Box>
 
                 {/* Search and Filter */}
@@ -281,9 +300,10 @@ function HomePage() {
                                     <Grid item xs={12} sm={6} md={2.4} key={jersey.id}>
                                         <JerseyCard
                                             jersey={jersey}
-                                            onAddToCart={() => addToCart(jersey)}
+                                            onAddToCart={handleAddToCart}
                                             onAddToWishlist={handleWishlist}
                                             isWishlisted={wishlistedItems.has(jersey.id)}
+                                            requiresAuth={!isAuthenticated}
                                         />
                                     </Grid>
                                 ))}

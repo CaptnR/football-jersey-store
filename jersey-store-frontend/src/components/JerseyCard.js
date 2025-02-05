@@ -8,12 +8,14 @@ import {
     Box,
     IconButton,
     Button,
+    CardActions,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import { motion } from 'framer-motion';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 
-function JerseyCard({ jersey, onAddToCart, onAddToWishlist, isWishlisted }) {
+function JerseyCard({ jersey, onAddToCart, onAddToWishlist, isWishlisted, requiresAuth }) {
     // Add more comprehensive validation
     if (!jersey || typeof jersey !== 'object') { 
         console.warn('Invalid jersey data received:', jersey);
@@ -167,18 +169,11 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, isWishlisted }) {
 
                             <Button
                                 variant="contained"
+                                fullWidth
                                 onClick={() => onAddToCart(jersey)}
-                                sx={{
-                                    bgcolor: 'primary.dark',
-                                    '&:hover': {
-                                        bgcolor: 'primary.main',
-                                    },
-                                    borderRadius: 1,
-                                    px: 3,
-                                    py: 1
-                                }}
+                                startIcon={<ShoppingCartIcon />}
                             >
-                                Add to Cart
+                                {requiresAuth ? 'Login to Buy' : 'Add to Cart'}
                             </Button>
                         </Box>
                     </Box>

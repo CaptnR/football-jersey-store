@@ -1,7 +1,7 @@
 // Updated LoginPage.js with Material-UI components and styling
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
     Container,
@@ -17,6 +17,8 @@ function LoginPage() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const location = useLocation();
+    const from = location.state?.from || '/';
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -27,10 +29,10 @@ function LoginPage() {
             });
             
             localStorage.setItem('token', response.data.token);
-            localStorage.setItem('is_admin', response.data.is_admin.toString());  // Make sure this is set
-            console.log('Login response:', response.data); // Add this for debugging
+            localStorage.setItem('is_admin', response.data.is_admin.toString());
             
-            navigate('/dashboard');
+            // Redirect back to the original page
+            navigate(from, { replace: true });
         } catch (error) {
             setError('Invalid credentials');
             console.error('Login error:', error);
