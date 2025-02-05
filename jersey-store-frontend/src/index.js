@@ -1,6 +1,10 @@
+// Updated index.js to address ResizeObserver loop warning
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, CssBaseline } from '@mui/material'; // Import MUI ThemeProvider and CssBaseline
+import theme from './theme/theme'; // Import the custom theme
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import DashboardPage from './pages/DashboardPage';
@@ -17,6 +21,23 @@ import UserOrdersPage from './pages/UserOrdersPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import WishlistPage from './pages/WishlistPage';
+
+// Suppress ResizeObserver loop error globally
+const resizeObserverErrorHandler = (e) => {
+    if (e.message === "ResizeObserver loop completed with undelivered notifications.") {
+        e.stopImmediatePropagation();
+    }
+};
+
+window.addEventListener("error", resizeObserverErrorHandler);
+
+// Polyfill for ResizeObserver error suppression
+const ResizeObserver = window.ResizeObserver;
+if (ResizeObserver) {
+    const ro = new ResizeObserver(() => {});
+    ro.observe(document.body);
+    ro.disconnect();
+}
 
 const token = localStorage.getItem('token');
 if (token) {
@@ -50,9 +71,10 @@ function App() {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-    <React.StrictMode>
+    <ThemeProvider theme={theme}> {/* Apply the Material-UI theme */}
+        <CssBaseline /> {/* Normalize and reset CSS styles */}
         <CartProvider>
             <App />
         </CartProvider>
-    </React.StrictMode>
+    </ThemeProvider>
 );

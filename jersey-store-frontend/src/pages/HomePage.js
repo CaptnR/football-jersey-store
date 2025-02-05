@@ -1,8 +1,24 @@
+// Updated HomePage.js with vertical layout for search and filter elements
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { isLoggedIn, fetchJerseys } from '../api/api';
 import Recommendations from '../components/Recommendations';
 import axios from 'axios';
+import {
+    Container,
+    Box,
+    Typography,
+    Button,
+    Grid,
+    Card,
+    CardMedia,
+    CardContent,
+    Select,
+    MenuItem,
+    Slider,
+    CircularProgress,
+} from '@mui/material';
 
 function HomePage() {
     const navigate = useNavigate();
@@ -36,7 +52,7 @@ function HomePage() {
                 setLoading(false);
             })
             .catch((error) => {
-                console.error("Error fetching jerseys:", error);
+                console.error('Error fetching jerseys:', error);
                 setLoading(false);
             });
     };
@@ -57,7 +73,7 @@ function HomePage() {
                     maxPrice: response.data.price_range.max,
                 }));
             })
-            .catch((error) => console.error("Error fetching metadata:", error));
+            .catch((error) => console.error('Error fetching metadata:', error));
     };
 
     const handleSearch = (e) => {
@@ -86,189 +102,150 @@ function HomePage() {
         setIsFilterExpanded(false);
     };
 
-    if (loading) return <p>Loading...</p>;
+    if (loading) return <CircularProgress sx={{ display: 'block', margin: 'auto', mt: 4 }} />;
 
     return (
-        <main className="container">
+        <Container maxWidth="lg">
             {/* Hero Section */}
-            <section className="hero">
-                <h1>Football Jersey Store</h1>
-                <p>Discover jerseys of your favorite teams and players.</p>
+            <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 2 }}>
+                <Typography variant="h2" color="primary" gutterBottom>
+                    Football Jersey Store
+                </Typography>
+                <Typography variant="body1" color="text.secondary" gutterBottom>
+                    Discover jerseys of your favorite teams and players.
+                </Typography>
                 <Recommendations />
-                <button onClick={() => navigate('/customize')} className="button-primary">
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => navigate('/customize')}
+                    sx={{ mt: 2 }}
+                >
                     Customize Jersey
-                </button>
-            </section>
+                </Button>
+            </Box>
 
             {/* Search and Filter Section */}
-            <section
-                style={{
-                    margin: '20px 0',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr auto',
-                    gap: '15px',
-                    alignItems: 'center',
-                }}
-            >
-                {/* Search Bar */}
-                <form
-                    onSubmit={handleSearchSubmit}
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr auto',
-                        gap: '10px',
-                    }}
-                >
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 4 }}>
+                <form onSubmit={handleSearchSubmit} style={{ width: '100%', textAlign: 'center', marginBottom: '16px' }}>
                     <input
                         type="text"
                         placeholder="Search for jerseys by player or team..."
                         value={searchQuery}
                         onChange={handleSearch}
-                        style={{
-                            padding: '12px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            fontSize: '1rem',
-                        }}
+                        style={{ padding: '8px', width: '80%', marginBottom: '8px' }}
                     />
-                    <button
-                        type="submit"
-                        className="button-primary"
-                        style={{
-                            padding: '12px 20px',
-                            fontSize: '1rem',
-                            borderRadius: '5px',
-                            backgroundColor: '#007bff',
-                            color: '#fff',
-                            border: 'none',
-                            cursor: 'pointer',
-                        }}
-                    >
+                    <Button type="submit" variant="contained" color="primary">
                         Search
-                    </button>
+                    </Button>
                 </form>
-
-                {/* Filter Icon */}
-                <button
+                <Button
+                    variant="outlined"
+                    color="secondary"
                     onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                    style={{
-                        background: '#007bff',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '5px',
-                        padding: '12px 20px',
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                    }}
+                    sx={{ mt: 2 }}
                 >
                     Filters ⚙️
-                </button>
-            </section>
+                </Button>
+            </Box>
 
             {/* Collapsible Filters */}
             {isFilterExpanded && metadata && (
-                <section style={{ margin: '20px 0', padding: '20px', border: '1px solid #ccc', borderRadius: '5px' }}>
-                    <select
+                <Box sx={{ p: 2, borderRadius: 2, backgroundColor: 'background.paper', mb: 4 }}>
+                    <Select
                         name="player"
                         value={filters.player}
                         onChange={handleFilterChange}
-                        style={{
-                            padding: '10px',
-                            marginBottom: '10px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            width: '100%',
-                        }}
+                        displayEmpty
+                        fullWidth
+                        sx={{ mb: 2 }}
                     >
-                        <option value="">Select Player</option>
+                        <MenuItem value="">Select Player</MenuItem>
                         {metadata.players.map((player) => (
-                            <option key={player} value={player}>
+                            <MenuItem key={player} value={player}>
                                 {player}
-                            </option>
+                            </MenuItem>
                         ))}
-                    </select>
-                    <select
+                    </Select>
+                    <Select
                         name="league"
                         value={filters.league}
                         onChange={handleFilterChange}
-                        style={{
-                            padding: '10px',
-                            marginBottom: '10px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            width: '100%',
-                        }}
+                        displayEmpty
+                        fullWidth
+                        sx={{ mb: 2 }}
                     >
-                        <option value="">Select League</option>
+                        <MenuItem value="">Select League</MenuItem>
                         {metadata.leagues.map((league) => (
-                            <option key={league} value={league}>
+                            <MenuItem key={league} value={league}>
                                 {league}
-                            </option>
+                            </MenuItem>
                         ))}
-                    </select>
-                    <select
+                    </Select>
+                    <Select
                         name="team"
                         value={filters.team}
                         onChange={handleFilterChange}
-                        style={{
-                            padding: '10px',
-                            marginBottom: '10px',
-                            border: '1px solid #ccc',
-                            borderRadius: '5px',
-                            width: '100%',
-                        }}
+                        displayEmpty
+                        fullWidth
+                        sx={{ mb: 2 }}
                     >
-                        <option value="">Select Team</option>
+                        <MenuItem value="">Select Team</MenuItem>
                         {metadata.teams.map((team) => (
-                            <option key={team} value={team}>
+                            <MenuItem key={team} value={team}>
                                 {team}
-                            </option>
+                            </MenuItem>
                         ))}
-                    </select>
-                    <div style={{ marginBottom: '10px' }}>
-                        <label>Price Range: ${filters.minPrice} - ${filters.maxPrice}</label>
-                        <input
-                            type="range"
-                            name="minPrice"
-                            min={metadata.price_range.min}
-                            max={metadata.price_range.max}
-                            value={filters.minPrice}
-                            onChange={handleFilterChange}
-                        />
-                        <input
-                            type="range"
-                            name="maxPrice"
-                            min={metadata.price_range.min}
-                            max={metadata.price_range.max}
-                            value={filters.maxPrice}
-                            onChange={handleFilterChange}
-                        />
-                    </div>
-                    <button onClick={handleFilterApply} className="button-primary">
+                    </Select>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                        Price Range: ${filters.minPrice} - ${filters.maxPrice}
+                    </Typography>
+                    <Slider
+                        name="price"
+                        value={[filters.minPrice, filters.maxPrice]}
+                        onChange={(e, newValue) => {
+                            setFilters({ ...filters, minPrice: newValue[0], maxPrice: newValue[1] });
+                        }}
+                        min={metadata.price_range.min}
+                        max={metadata.price_range.max}
+                        valueLabelDisplay="auto"
+                    />
+                    <Button variant="contained" color="primary" onClick={handleFilterApply} sx={{ mt: 2 }}>
                         Apply Filters
-                    </button>
-                </section>
+                    </Button>
+                </Box>
             )}
 
             {/* Jersey Grid */}
-            <div className="grid">
+            <Grid container spacing={4}>
                 {jerseys.map((jersey) => (
-                    <Link key={jersey.id} to={`/jersey/${jersey.id}`} className="card">
-                        <img
-                            src={jersey.image}
-                            alt="Jersey"
-                            style={{
-                                width: '100%',
-                                height: '200px',
-                                objectFit: 'cover',
-                                borderRadius: '8px',
-                            }}
-                        />
-                        <h2>${jersey.price}</h2>
-                    </Link>
+                    <Grid item xs={12} sm={6} md={4} key={jersey.id}>
+                        <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+                            <CardMedia
+                                component="img"
+                                height="200"
+                                image={jersey.image}
+                                alt="Jersey"
+                            />
+                            <CardContent>
+                                <Typography variant="h6" gutterBottom>
+                                    ${jersey.price}
+                                </Typography>
+                                <Button
+                                    component={Link}
+                                    to={`/jersey/${jersey.id}`}
+                                    variant="outlined"
+                                    color="primary"
+                                    fullWidth
+                                >
+                                    View Details
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </Grid>
                 ))}
-            </div>
-        </main>
+            </Grid>
+        </Container>
     );
 }
 

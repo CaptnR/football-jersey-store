@@ -1,6 +1,18 @@
+// Updated WishlistPage.js with Material-UI components and styling
+
 import React, { useEffect, useState } from 'react';
 import { getWishlist, removeFromWishlist } from '../api/api';
 import { Link } from 'react-router-dom';
+import {
+    Container,
+    Typography,
+    Grid,
+    Card,
+    CardMedia,
+    CardContent,
+    Button,
+    Alert,
+} from '@mui/material';
 
 function WishlistPage() {
     const [wishlist, setWishlist] = useState([]);
@@ -29,33 +41,55 @@ function WishlistPage() {
     };
 
     return (
-        <main className="container">
-            <h1>Your Wishlist</h1>
+        <Container maxWidth="md" sx={{ mt: 4 }}>
+            <Typography variant="h4" gutterBottom align="center">
+                Your Wishlist
+            </Typography>
+
             {wishlist.length === 0 ? (
-                <p>Your wishlist is empty.</p>
+                <Alert severity="info" sx={{ mt: 4 }}>
+                    Your wishlist is empty. Start adding your favorite jerseys!
+                </Alert>
             ) : (
-                <ul style={{ listStyle: 'none', padding: 0 }}>
+                <Grid container spacing={4}>
                     {wishlist.map((jersey) => (
-                        <li key={jersey.id} style={{ marginBottom: '1rem' }}>
-                            <Link to={`/jersey/${jersey.id}`}>
-                                <img
-                                    src={jersey.image}
+                        <Grid item xs={12} sm={6} md={4} key={jersey.id}>
+                            <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
+                                <CardMedia
+                                    component="img"
+                                    height="140"
+                                    image={jersey.image}
                                     alt={jersey.player.name}
-                                    style={{ width: '100px', marginRight: '1rem' }}
+                                    sx={{ objectFit: 'cover' }}
                                 />
-                                {jersey.player.name} - ${jersey.price}
-                            </Link>
-                            <button
-                                style={{ marginLeft: '1rem', color: 'red' }}
-                                onClick={() => handleRemove(jersey.id)}
-                            >
-                                Remove
-                            </button>
-                        </li>
+                                <CardContent>
+                                    <Typography
+                                        variant="h6"
+                                        gutterBottom
+                                        component={Link}
+                                        to={`/jersey/${jersey.id}`}
+                                        sx={{ textDecoration: 'none', color: 'primary.main' }}
+                                    >
+                                        {jersey.player.name}
+                                    </Typography>
+                                    <Typography variant="body1" color="text.secondary">
+                                        ${jersey.price}
+                                    </Typography>
+                                </CardContent>
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    onClick={() => handleRemove(jersey.id)}
+                                    sx={{ m: 2 }}
+                                >
+                                    Remove
+                                </Button>
+                            </Card>
+                        </Grid>
                     ))}
-                </ul>
+                </Grid>
             )}
-        </main>
+        </Container>
     );
 }
 

@@ -1,87 +1,101 @@
+// Updated Navbar.js to ensure consistent spacing between all links with inline comments
+
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { setAuthToken } from '../api/api';
-import { CartContext } from '../context/CartContext'; // Import CartContext
+import { CartContext } from '../context/CartContext';
+import {
+    AppBar,
+    Toolbar,
+    Typography,
+    Button,
+    Box,
+    Badge,
+    IconButton,
+    //MenuItem,
+} from '@mui/material';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 
 function Navbar() {
-    const navigate = useNavigate();
-    const { cart } = useContext(CartContext); // Access cart context to get cart items
+    const navigate = useNavigate(); // React Router hook to programmatically navigate between routes
+    const { cart } = useContext(CartContext); // Access cart context to get the number of items in the cart
 
+    // Handle logout functionality
     const handleLogout = () => {
-        localStorage.removeItem('token'); // Remove token from storage
-        localStorage.removeItem('isAdmin'); // Remove admin status if stored
-        setAuthToken(null); // Clear Axios authorization header
-        alert('You have been logged out.');
-        navigate('/login'); // Redirect to login page
+        localStorage.removeItem('token'); // Clear token from localStorage to log out the user
+        localStorage.removeItem('isAdmin'); // Clear admin status if stored
+        setAuthToken(null); // Reset Axios authorization header
+        alert('You have been logged out.'); // Notify the user
+        navigate('/login'); // Redirect the user to the login page
     };
 
-    const isLoggedIn = !!localStorage.getItem('token'); // Check if user is logged in
-    const isAdmin = localStorage.getItem('isAdmin') === 'true'; // Check if user is an admin
+    // Check if the user is logged in by verifying the presence of a token
+    const isLoggedIn = !!localStorage.getItem('token');
+    // Check if the logged-in user is an admin
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
 
     return (
-        <nav className="container-fluid" role="navigation" style={{ padding: '1rem 0', borderBottom: '1px solid #ddd' }}>
-            <ul>
-                <li>
-                    <strong>Football Jersey Store</strong>
-                </li>
-            </ul>
-            <ul style={{ display: 'flex', gap: '10px' }}>
-                <li>
-                    <Link to="/">Home</Link>
-                </li>
-                {isLoggedIn && (
-                    <>
-                        <li>
-                        {isLoggedIn && !isAdmin && <li><Link to="/dashboard">Dashboard</Link></li>} {/* New User Dashboard Link */}
-                        </li>
-                        <li>
-                        {isLoggedIn && !isAdmin && <li><Link to="/wishlist">Wishlist</Link></li>} {/* Wishlist link */}
-                        </li>
-                        <li>
-                        {isLoggedIn && !isAdmin && <li><Link to="/cart">
-                                Cart ({cart.length}) {/* Display the number of items in the cart */}
-                            </Link></li>}
-                        </li>
-                        <li>
-                        {isLoggedIn && !isAdmin && <li><Link to="/orders">My Orders</Link></li>} {/* User orders link */}
-                        </li>
-                        {isAdmin && (
-                            <>
-                                <li>
-                                    <Link to="/admin/dashboard">Admin Dashboard</Link> {/* Admin dashboard link */}
-                                </li>
-                                <li>
-                                    <Link to="/admin/orders">Admin Orders</Link> {/* Admin orders link */}
-                                </li>
-                            </>
-                        )}
-                        <li>
-                            <button
-                                onClick={handleLogout}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#007bff',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                Logout
-                            </button>
-                        </li>
-                    </>
-                )}
-                {!isLoggedIn && (
-                    <>
-                        <li>
-                            <Link to="/login">Login</Link>
-                        </li>
-                        <li>
-                            <Link to="/signup">Sign Up</Link>
-                        </li>
-                    </>
-                )}
-            </ul>
-        </nav>
+        <AppBar position="static" sx={{ backgroundColor: 'primary.main' }}> {/* Material-UI AppBar for consistent navbar styling */}
+            <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}> {/* Align navbar content */}
+                {/* Branding Section */}
+                <Typography
+                    variant="h6"
+                    component={Link}
+                    to="/"
+                    sx={{ textDecoration: 'none', color: 'inherit', whiteSpace: 'nowrap', flexGrow: 1 }}
+                >
+                    Football Jersey Store
+                </Typography>
+
+                {/* Navigation Links aligned to the right */}
+                <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', whiteSpace: 'nowrap' }}> {/* Box for consistent spacing between links */}
+                    {isLoggedIn && !isAdmin && ( /* Links for logged-in regular users */
+                        <>
+                            <Button color="inherit" component={Link} to="/dashboard"> {/* User Dashboard Link */}
+                                Dashboard
+                            </Button>
+                            <Button color="inherit" component={Link} to="/wishlist"> {/* Wishlist Link */}
+                                Wishlist
+                            </Button>
+                            <Button color="inherit" component={Link} to="/orders"> {/* My Orders Link */}
+                                My Orders
+                            </Button>
+                            <IconButton color="inherit" component={Link} to="/cart"> {/* Cart Link with item count badge */}
+                                <Badge badgeContent={cart.length} color="error"> {/* Show number of items in the cart */}
+                                    <ShoppingCartIcon />
+                                </Badge>
+                            </IconButton>
+                        </>
+                    )}
+
+                    {isAdmin && ( /* Links for admin users */
+                        <>
+                            <Button color="inherit" component={Link} to="/admin/dashboard"> {/* Admin Dashboard Link */}
+                                Admin Dashboard
+                            </Button>
+                            <Button color="inherit" component={Link} to="/admin/orders"> {/* Admin Orders Link */}
+                                Admin Orders
+                            </Button>
+                        </>
+                    )}
+
+                    {isLoggedIn ? ( /* Logout button for logged-in users */
+                        <Button color="inherit" onClick={handleLogout}> {/* Trigger logout */}
+                            Logout
+                        </Button>
+                    ) : ( /* Links for non-logged-in users */
+                        <>
+                            <Button color="inherit" component={Link} to="/login"> {/* Login Link */}
+                                Login
+                            </Button>
+                            <Button color="inherit" component={Link} to="/signup"> {/* Signup Link */}
+                                Sign Up
+                            </Button>
+                        </>
+                    )}
+                </Box>
+            </Toolbar>
+        </AppBar>
     );
 }
 
