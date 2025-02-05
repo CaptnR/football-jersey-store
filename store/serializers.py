@@ -4,27 +4,22 @@ from .models import Team, Player, Jersey, Customization, Order, Payment, Review
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
-        fields = '__all__'
+        fields = ['id', 'name', 'league', 'logo']
 
 class PlayerSerializer(serializers.ModelSerializer):
+    team = TeamSerializer()
+    
     class Meta:
         model = Player
-        fields = '__all__'
+        fields = ['id', 'name', 'team']
 
 class JerseySerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
-
+    player = PlayerSerializer()
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    
     class Meta:
         model = Jersey
-        fields = ['id', 'price', 'image', 'player']
-
-    def get_image(self, obj):
-        # Get the request object from the serializer context
-        request = self.context.get('request')
-        if request is None:
-            # Fallback if request is not available (for testing or other use cases)
-            return obj.get_image_url()
-        return request.build_absolute_uri(obj.get_image_url())
+        fields = ['id', 'player', 'price', 'image']
 
 class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,9 +27,20 @@ class CustomizationSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 class OrderSerializer(serializers.ModelSerializer):
+    items = serializers.JSONField(default=list)
+    user = serializers.StringRelatedField()
+    total_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    
     class Meta:
         model = Order
-        fields = ['id', 'user', 'total_price', 'created_at', 'status']
+        fields = ['id', 'user', 'total_price', 'status', 'created_at', 'updated_at', 'items']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Ensure status is lowercase
+        if representation.get('status'):
+            representation['status'] = representation['status'].lower()
+        return representation
 
 class UserOrderSerializer(serializers.ModelSerializer):
     class Meta:
@@ -58,8 +64,13 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ['id', 'user_name', 'rating', 'comment', 'created_at']
-        read_only_fields = ['user_name', 'created_at']
+        fields = ['id', 'user_name', 'rating', 'comment', 'created_at', 'jersey']
+        read_only_fields = ['user_name', 'created_at', 'jersey']
 
     def get_user_name(self, obj):
         return obj.user.username
+
+    def validate_rating(self, value):
+        if not isinstance(value, int) or value < 1 or value > 5:
+            raise serializers.ValidationError("Rating must be an integer between 1 and 5")
+        return value

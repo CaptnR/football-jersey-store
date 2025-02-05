@@ -20,25 +20,20 @@ function LoginPage() {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-
         try {
             const response = await axios.post('http://127.0.0.1:8000/api/login/', {
                 username,
                 password,
             });
-
-            const token = response.data.token; // Extract token from the response
-            const isAdmin = response.data.is_admin; // Extract admin status from the response
-
-            // Save the token and admin status in localStorage
-            localStorage.setItem('token', token);
-            localStorage.setItem('isAdmin', isAdmin); // Store admin status as 'true' or 'false'
-
-            alert('Login successful!');
-            navigate('/'); // Redirect to the home page
+            
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('is_admin', response.data.is_admin.toString());  // Make sure this is set
+            console.log('Login response:', response.data); // Add this for debugging
+            
+            navigate('/dashboard');
         } catch (error) {
-            console.error('Error during login:', error.response || error.message);
-            setError('Login failed. Please check your credentials and try again.');
+            setError('Invalid credentials');
+            console.error('Login error:', error);
         }
     };
 

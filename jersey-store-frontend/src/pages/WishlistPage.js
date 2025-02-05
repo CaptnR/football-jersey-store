@@ -31,12 +31,19 @@ function WishlistPage() {
         fetchWishlist();
     }, [token]);
 
-    const handleRemove = async (jerseyId) => {
+    const handleRemove = async (jersey) => {
         try {
-            await removeFromWishlist(token, jerseyId);
-            setWishlist(wishlist.filter((jersey) => jersey.id !== jerseyId));
+            const jerseyId = jersey.id;
+            console.log('Removing jersey with ID:', jerseyId);
+            
+            const response = await removeFromWishlist(jerseyId);
+            if (response.status === 204) {
+                setWishlist(prevItems => 
+                    prevItems.filter(item => item.id !== jerseyId)
+                );
+            }
         } catch (error) {
-            console.error('Error removing item from wishlist:', error.response || error.message);
+            console.error('Error removing item from wishlist:', error.response || error);
         }
     };
 
@@ -79,10 +86,10 @@ function WishlistPage() {
                                 <Button
                                     variant="contained"
                                     color="error"
-                                    onClick={() => handleRemove(jersey.id)}
+                                    onClick={() => handleRemove(jersey)}
                                     sx={{ m: 2 }}
                                 >
-                                    Remove
+                                    Remove from Wishlist
                                 </Button>
                             </Card>
                         </Grid>

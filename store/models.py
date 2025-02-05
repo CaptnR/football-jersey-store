@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
@@ -35,21 +36,34 @@ class Customization(models.Model):
         return f"Customization for {self.jersey.player.name}"
     
 class Order(models.Model):
-    STATUS_CHOICES = [
-        ('Pending', 'Pending'),
-        ('Shipped', 'Shipped'),
-        ('Delivered', 'Delivered'),
-        ('Cancelled', 'Cancelled'),
-    ]
-
-    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)  # Link to the user
-    total_price = models.DecimalField(max_digits=10, decimal_places=2)  # Total price
-    created_at = models.DateTimeField(auto_now_add=True)  # Order creation time
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')  # Order status
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('shipped', 'Shipped'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled')
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(
+        max_length=20, 
+        choices=STATUS_CHOICES, 
+        default='pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    items = models.JSONField(default=list, null=True, blank=True)
 
     def __str__(self):
         return f"Order {self.id} by {self.user.username}"
     
+    def save(self, *args, **kwargs):
+        # Ensure status is always lowercase before saving
+        if self.status:
+            self.status = self.status.lower()
+        super().save(*args, **kwargs)
+
 class Payment(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="payment")  # Link to the order
     name_on_card = models.CharField(max_length=255)  # Cardholder name
@@ -72,23 +86,14 @@ class Wishlist(models.Model):
         return f"{self.user.username}'s wishlist item: {self.jersey.player.name}"
 
 class Review(models.Model):
-    RATING_CHOICES = [
-        (1, '1 Star'),
-        (2, '2 Stars'),
-        (3, '3 Stars'),
-        (4, '4 Stars'),
-        (5, '5 Stars'),
-    ]
-    
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    jersey = models.ForeignKey('Jersey', on_delete=models.CASCADE, related_name='reviews')
-    rating = models.IntegerField(choices=RATING_CHOICES)
+    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
-        unique_together = ('user', 'jersey')  # One review per jersey per user
-        ordering = ['-created_at']
+        unique_together = ('user', 'jersey')  # Ensure one review per user per jersey
 
     def __str__(self):
         return f"{self.user.username}'s review of {self.jersey.player.name} jersey"
