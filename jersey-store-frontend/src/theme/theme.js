@@ -1,51 +1,68 @@
 // src/theme/theme.js
 
-import { createTheme } from "@mui/material/styles";
+import { createTheme } from '@mui/material';
 
-// Define the grey, black, and white pastel theme
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#6D6D6D", // Grey
+      main: '#1a237e', // Deep football navy blue
+      light: '#534bae',
+      dark: '#000051',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: "#B3B3B3", // Light grey
+      main: '#c62828', // Football red
+      light: '#ff5f52',
+      dark: '#8e0000',
+      contrastText: '#ffffff',
     },
     background: {
-      default: "#F5F5F5", // White pastel
-      paper: "#E0E0E0",   // Slightly darker grey
-    },
-    text: {
-      primary: "#212121", // Black
-      secondary: "#757575", // Dark grey
+      default: '#f5f5f5',
+      paper: '#ffffff',
     },
   },
   typography: {
-    fontFamily: "Roboto, Arial, sans-serif",
+    fontFamily: '"Roboto", "Arial", sans-serif',
     h1: {
-      fontSize: "2rem",
-      fontWeight: 500,
-      color: "#212121",
+      fontWeight: 700,
     },
-    body1: {
-      fontSize: "1rem",
-      color: "#6D6D6D",
+    h4: {
+      fontWeight: 600,
+    },
+    button: {
+      textTransform: 'none',
+      fontWeight: 600,
     },
   },
   components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: "12px", // Smooth rounded corners
-          textTransform: "none", // Disable uppercase text
-        },
-      },
-    },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: "16px",
-          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+          borderRadius: 8,
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-4px)',
+            boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
+          },
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          padding: '8px 24px',
+        },
+        contained: {
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         },
       },
     },

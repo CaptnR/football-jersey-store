@@ -35,20 +35,47 @@ function Navbar() {
     const isAdmin = localStorage.getItem('isAdmin') === 'true';
 
     return (
-        <AppBar position="static" sx={{ backgroundColor: 'primary.main' }}> {/* Material-UI AppBar for consistent navbar styling */}
-            <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}> {/* Align navbar content */}
-                {/* Branding Section */}
+        <AppBar 
+            position="sticky" 
+            sx={{ 
+                backgroundColor: 'primary.main',
+                borderBottom: '1px solid rgba(255,255,255,0.1)'
+            }}
+        >
+            <Toolbar sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '0.5rem 2rem'
+            }}>
                 <Typography
-                    variant="h6"
+                    variant="h5"
                     component={Link}
                     to="/"
-                    sx={{ textDecoration: 'none', color: 'inherit', whiteSpace: 'nowrap', flexGrow: 1 }}
+                    sx={{
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        fontWeight: 700,
+                        letterSpacing: '0.5px',
+                        '&:hover': {
+                            opacity: 0.9
+                        }
+                    }}
                 >
-                    Football Jersey Store
+                    ⚽ Football Jersey Store
                 </Typography>
 
-                {/* Navigation Links aligned to the right */}
-                <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', whiteSpace: 'nowrap' }}> {/* Box for consistent spacing between links */}
+                <Box sx={{ 
+                    display: 'flex', 
+                    gap: 2, 
+                    alignItems: 'center',
+                    '& .MuiButton-root': {
+                        borderRadius: 2,
+                        px: 2,
+                        py: 1,
+                        fontWeight: 600
+                    }
+                }}>
                     {isLoggedIn && !isAdmin && ( /* Links for logged-in regular users */
                         <>
                             <Button color="inherit" component={Link} to="/dashboard"> {/* User Dashboard Link */}
