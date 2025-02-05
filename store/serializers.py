@@ -16,10 +16,17 @@ class PlayerSerializer(serializers.ModelSerializer):
 class JerseySerializer(serializers.ModelSerializer):
     player = PlayerSerializer()
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    team_name = serializers.CharField(source='player.team.name', read_only=True)
+    league = serializers.CharField(source='player.team.league', read_only=True)
     
     class Meta:
         model = Jersey
-        fields = ['id', 'player', 'price', 'image']
+        fields = ['id', 'player', 'price', 'image', 'team_name', 'league']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['price'] = float(instance.price)
+        return representation
 
 class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:

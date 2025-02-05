@@ -60,9 +60,23 @@ class JerseyViewSet(viewsets.ModelViewSet):
     queryset = Jersey.objects.all()
     serializer_class = JerseySerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+    search_fields = ['player__name', 'player__team__name', 'player__team__league']
+    filterset_fields = ['player__team__league', 'player__team__name']
     
     def get_queryset(self):
-        return Jersey.objects.select_related('player', 'player__team').all()
+        queryset = Jersey.objects.select_related('player', 'player__team').all()
+        
+        # Handle price range filter
+        min_price = self.request.query_params.get('min_price')
+        max_price = self.request.query_params.get('max_price')
+        
+        if min_price:
+            queryset = queryset.filter(price__gte=min_price)
+        if max_price:
+            queryset = queryset.filter(price__lte=max_price)
+            
+        return queryset
     
     def retrieve(self, request, *args, **kwargs):
         try:
@@ -416,3 +430,14 @@ class OrderStatusView(APIView):
                 {'error': 'Order not found'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def filter_metadata(request):
+    leagues = Team.objects.values_list('league', flat=True).distinct()
+    teams = Team.objects.values_list('name', flat=True).distinct()
+    
+    return Response({
+        'leagues': list(leagues),
+        'teams': list(teams)
+    })

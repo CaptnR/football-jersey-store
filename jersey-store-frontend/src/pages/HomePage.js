@@ -10,11 +10,21 @@ import {
     Typography,
     Grid,
     Alert,
+    TextField,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Slider,
+    Button,
+    IconButton,
+    Card
 } from '@mui/material';
 import JerseyCard from '../components/JerseyCard';
 import { CartContext } from '../context/CartContext';
 import SearchFilterBar from '../components/SearchFilterBar';
 import Spinner from '../components/Spinner';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 function HomePage() {
     const navigate = useNavigate();
@@ -26,18 +36,36 @@ function HomePage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isFilterExpanded, setIsFilterExpanded] = useState(false);
     const [filters, setFilters] = useState({
-        player: '',
         league: '',
         team: '',
-        minPrice: 0,
-        maxPrice: 100,
+        priceRange: [0, 1000],
     });
+    const [leagues, setLeagues] = useState([]);
+    const [teams, setTeams] = useState([]);
     const [metadata, setMetadata] = useState(null);
 
-    const fetchAllJerseys = async (query = '') => {
+    const fetchAllJerseys = async () => {
         try {
             setLoading(true);
-            const response = await fetchJerseys(query);
+            let url = '/jerseys/?';
+            
+            // Add search query if present
+            if (searchQuery) {
+                url += `search=${searchQuery}&`;
+            }
+            
+            // Add filters
+            if (filters.league) {
+                url += `player__team__league=${filters.league}&`;
+            }
+            if (filters.team) {
+                url += `player__team__name=${filters.team}&`;
+            }
+            if (filters.priceRange) {
+                url += `min_price=${filters.priceRange[0]}&max_price=${filters.priceRange[1]}&`;
+            }
+            
+            const response = await API.get(url);
             setJerseys(response.data);
         } catch (error) {
             console.error('Error fetching jerseys:', error);
@@ -73,38 +101,37 @@ function HomePage() {
         }
     }, []);
 
-    const fetchFilterMetadata = () => {
-        API.get('/metadata/')
-            .then((response) => {
-                setMetadata(response.data);
-                setFilters((prevFilters) => ({
-                    ...prevFilters,
-                    minPrice: response.data.price_range.min,
-                    maxPrice: response.data.price_range.max,
-                }));
-            })
-            .catch((error) => console.error('Error fetching metadata:', error));
+    useEffect(() => {
+        if (localStorage.getItem('token')) {
+            fetchAllJerseys();
+        }
+    }, [searchQuery, filters]);
+
+    const fetchFilterMetadata = async () => {
+        try {
+            const response = await API.get('/metadata/');
+            setLeagues(response.data.leagues);
+            setTeams(response.data.teams);
+            setMetadata(response.data);
+            setFilters((prevFilters) => ({
+                ...prevFilters,
+                minPrice: response.data.price_range.min,
+                maxPrice: response.data.price_range.max,
+            }));
+        } catch (error) {
+            console.error('Error fetching metadata:', error);
+        }
     };
 
-    const handleSearch = (query) => {
-        fetchAllJerseys(`?search=${query}`);
+    const handleSearch = (event) => {
+        setSearchQuery(event.target.value);
     };
 
-    const handleFilterChange = (e) => {
-        const { name, value } = e.target;
-        setFilters((prevFilters) => ({ ...prevFilters, [name]: value }));
-    };
-
-    const handleFilterApply = (filters) => {
-        const filterQueries = [];
-        if (filters.player) filterQueries.push(`player__name=${filters.player}`);
-        if (filters.league) filterQueries.push(`player__team__league=${filters.league}`);
-        if (filters.team) filterQueries.push(`player__team__name=${filters.team}`);
-        if (filters.minPrice) filterQueries.push(`price__gte=${filters.minPrice}`);
-        if (filters.maxPrice) filterQueries.push(`price__lte=${filters.maxPrice}`);
-        const queryString = filterQueries.length ? `?${filterQueries.join('&')}` : '';
-        fetchAllJerseys(queryString);
-        setIsFilterExpanded(false);
+    const handleFilterChange = (name, value) => {
+        setFilters(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     const handleWishlist = async (jersey) => {
@@ -159,16 +186,67 @@ function HomePage() {
 
                 {/* Search and Filter */}
                 <Box sx={{ mb: 6 }}>
-                    <SearchFilterBar 
-                        onSearch={handleSearch}
-                        onFilter={handleFilterApply}
-                        leagues={metadata?.leagues || []}
-                        teams={metadata?.teams || []}
-                        priceRange={{
-                            min: metadata?.price_range?.min || 0,
-                            max: metadata?.price_range?.max || 200
-                        }}
+                    <TextField
+                        fullWidth
+                        label="Search jerseys"
+                        variant="outlined"
+                        value={searchQuery}
+                        onChange={handleSearch}
+                        sx={{ mb: 2 }}
                     />
+                    
+                    <Button
+                        startIcon={<FilterListIcon />}
+                        onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                        sx={{ mb: 2 }}
+                    >
+                        Filters
+                    </Button>
+
+                    {isFilterExpanded && (
+                        <Box sx={{ p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={4}>
+                                    <FormControl fullWidth>
+                                        <InputLabel>League</InputLabel>
+                                        <Select
+                                            value={filters.league}
+                                            onChange={(e) => handleFilterChange('league', e.target.value)}
+                                        >
+                                            <MenuItem value="">All Leagues</MenuItem>
+                                            {leagues.map(league => (
+                                                <MenuItem key={league} value={league}>{league}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={4}>
+                                    <FormControl fullWidth>
+                                        <InputLabel>Team</InputLabel>
+                                        <Select
+                                            value={filters.team}
+                                            onChange={(e) => handleFilterChange('team', e.target.value)}
+                                        >
+                                            <MenuItem value="">All Teams</MenuItem>
+                                            {teams.map(team => (
+                                                <MenuItem key={team} value={team}>{team}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <Typography gutterBottom>Price Range</Typography>
+                                    <Slider
+                                        value={filters.priceRange}
+                                        onChange={(e, newValue) => handleFilterChange('priceRange', newValue)}
+                                        valueLabelDisplay="auto"
+                                        min={0}
+                                        max={1000}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    )}
                 </Box>
 
                 {/* Loading and Error States */}
