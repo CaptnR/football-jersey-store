@@ -1,6 +1,6 @@
 // Updated JerseyDetails.js with fixes for Axios 401 error and review functionality
 
-import React, { useEffect, useState, useContext, useCallback } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { addToWishlist, removeFromWishlist } from '../api/api';
 import { CartContext } from '../context/CartContext';
@@ -16,7 +16,16 @@ import {
     CircularProgress,
     Alert,
     Rating,
+    CardMedia,
+    Stack,
+    IconButton,
+    Fade,
+    TextField,
 } from '@mui/material';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import { API } from '../api/api';
 
 function JerseyDetails() {
     const { id } = useParams();
@@ -26,14 +35,17 @@ function JerseyDetails() {
     const [error, setError] = useState(null);
     const { addToCart } = useContext(CartContext);
     const [reviews, setReviews] = useState([]);
+    const [userRating, setUserRating] = useState(0);
+    const [comment, setComment] = useState('');
     const isAuthenticated = !!localStorage.getItem('token');
 
     // Wishlist state
     const [isWishlisted, setIsWishlisted] = useState(false);
-    const token = localStorage.getItem('token'); // Get token from localStorage
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
+    const token = localStorage.getItem('token');
 
     // Fetch reviews
-    const fetchReviews = useCallback(async () => {
+    const fetchReviews = async () => {
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -54,7 +66,7 @@ function JerseyDetails() {
         } catch (error) {
             console.error('Error fetching reviews:', error);
         }
-    }, [id]);
+    };
 
     // Fetch jersey and player details
     useEffect(() => {
@@ -62,21 +74,15 @@ function JerseyDetails() {
             try {
                 setLoading(true);
                 const response = await axios.get(`http://127.0.0.1:8000/api/jerseys/${id}/`, {
-                    headers: {
-                        Authorization: `Token ${token}`
-                    }
+                    headers: token ? { Authorization: `Token ${token}` } : {}
                 });
                 setJersey(response.data);
             } catch (error) {
-                if (error.response?.status === 401) {
-                    // Redirect to login if unauthorized
-                    navigate('/login', { 
-                        state: { from: `/jersey/${id}` },
-                        replace: true 
-                    });
-                    return;
+                if (error.response?.status === 404) {
+                    setError('Jersey not found');
+                } else {
+                    setError('Failed to load jersey details');
                 }
-                setError('Failed to load jersey details');
                 console.error('Error fetching jersey details:', error);
             } finally {
                 setLoading(false);
@@ -84,44 +90,62 @@ function JerseyDetails() {
         };
 
         fetchJerseyDetails();
-    }, [id, navigate, token]);
+        fetchReviews();
+    }, [id, token]);
 
-    // Load reviews when component mounts
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            fetchReviews();
-        }
-    }, [fetchReviews]);
-
-    // Handle wishlist functionality
-    const handleWishlist = async () => {
-        if (!isAuthenticated) {
-            navigate('/login', { 
-                state: { from: `/jersey/${id}` }
-            });
-            return;
-        }
+    const handleSubmitReview = async (e) => {
+        e.preventDefault();
         try {
-            if (isWishlisted) {
-                await removeFromWishlist(token, jersey.id);
-            } else {
-                await addToWishlist(token, jersey.id);
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.error('No token found');
+                return;
             }
-            setIsWishlisted(!isWishlisted);
+
+            await axios.post(
+                `http://127.0.0.1:8000/api/jerseys/${id}/reviews/`,
+                {
+                    rating: userRating,
+                    comment: comment,
+                    jersey: id
+                },
+                {
+                    headers: {
+                        'Authorization': `Token ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            
+            // Reset form and refresh reviews
+            setUserRating(0);
+            setComment('');
+            fetchReviews();
         } catch (error) {
-            console.error('Error updating wishlist:', error.response || error.message);
+            console.error('Error submitting review:', error);
         }
     };
 
     const handleAddToCart = () => {
-        if (!isAuthenticated) {
-            navigate('/login', { 
-                state: { from: `/jersey/${id}` }
-            });
-            return;
+        setIsAddingToCart(true);
+        addToCart(jersey);
+        setTimeout(() => {
+            setIsAddingToCart(false);
+            navigate('/cart');
+        }, 500);
+    };
+
+    const handleWishlist = async () => {
+        try {
+            if (isWishlisted) {
+                await removeFromWishlist(jersey.id);
+            } else {
+                await addToWishlist(jersey.id);
+            }
+            setIsWishlisted(!isWishlisted);
+        } catch (error) {
+            console.error('Error updating wishlist:', error);
         }
-        // ... rest of add to cart logic
     };
 
     if (loading) {
@@ -153,80 +177,118 @@ function JerseyDetails() {
     }
 
     return (
-        <Container maxWidth="lg" sx={{ mt: 4 }}>
-            <Grid container spacing={4}>
-                <Grid item xs={12} md={6}>
-                    <img 
-                        src={jersey.image} 
-                        alt={`${jersey.player.name} Jersey`}
-                        style={{ 
-                            width: '100%', 
-                            height: 'auto',
-                            borderRadius: '8px'
-                        }}
-                    />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                    <Typography variant="h4" gutterBottom>
-                        {jersey.player.name}
-                    </Typography>
-                    <Typography variant="h6" color="text.secondary" gutterBottom>
-                        {jersey.player.team.name} - {jersey.player.team.league}
-                    </Typography>
-                    <Typography variant="h5" color="primary" gutterBottom>
-                        ${jersey.price}
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                        <Button 
-                            variant="contained" 
-                            color="primary"
-                            onClick={handleAddToCart}
-                        >
-                            Add to Cart
-                        </Button>
-                        <Button
-                            variant={isWishlisted ? "outlined" : "contained"}
-                            color="secondary"
-                            onClick={handleWishlist}
-                        >
-                            {isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
-                        </Button>
-                    </Box>
+        <Fade in={true} timeout={500}>
+            <Container maxWidth="lg">
+                <Box sx={{ py: 6 }}>
+                    <Grid container spacing={4}>
+                        {/* Jersey Image */}
+                        <Grid item xs={12} md={6}>
+                            <Card 
+                                elevation={0}
+                                sx={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                    backdropFilter: 'blur(8px)',
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                }}
+                            >
+                                <CardMedia
+                                    component="img"
+                                    image={jersey.image}
+                                    alt={jersey.player.name}
+                                    sx={{
+                                        height: 'auto',
+                                        objectFit: 'contain',
+                                        p: 4,
+                                    }}
+                                />
+                            </Card>
+                        </Grid>
 
-                    <Box sx={{ mt: 4 }}>
-                        <ReviewForm jerseyId={id} onReviewAdded={(review) => setReviews([...reviews, review])} />
-                    </Box>
+                        {/* Jersey Details */}
+                        <Grid item xs={12} md={6}>
+                            <Box>
+                                <Typography variant="h4" gutterBottom>
+                                    {jersey.player.name} Jersey
+                                </Typography>
+                                <Typography variant="h6" color="text.secondary" gutterBottom>
+                                    {jersey.player.team.name}
+                                </Typography>
+                                <Typography variant="h5" color="primary" sx={{ mb: 3 }}>
+                                    ${jersey.price}
+                                </Typography>
 
-                    <Box sx={{ mt: 6 }}>
-                        <Typography variant="h5" gutterBottom>
-                            Reviews ({reviews.length})
-                        </Typography>
-                        {reviews.length > 0 ? (
-                            reviews.map((review) => (
-                                <Card key={review.id} sx={{ mb: 2, p: 2 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                        <Rating value={review.rating} readOnly size="small" />
-                                        <Typography variant="subtitle2" sx={{ ml: 1 }}>
-                                            by {review.user_name}
-                                        </Typography>
-                                        <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                                            {new Date(review.created_at).toLocaleDateString()}
-                                        </Typography>
-                                    </Box>
-                                    <Typography variant="body2" color="text.secondary">
-                                        {review.comment}
-                                    </Typography>
-                                </Card>
-                            ))
-                        ) : (
-                            <Typography variant="body1" color="text.secondary">
-                                No reviews yet. Be the first to review this jersey!
-                            </Typography>
-                        )}
-                    </Box>
-                </Grid>
-            </Grid>
-        </Container>
+                                <Grid container spacing={2}>
+                                    <Grid item>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<ShoppingCartIcon />}
+                                            onClick={handleAddToCart}
+                                            sx={{ px: 4 }}
+                                        >
+                                            Add to Cart
+                                        </Button>
+                                    </Grid>
+                                    <Grid item>
+                                        <Button
+                                            variant="outlined"
+                                            startIcon={<FavoriteIcon />}
+                                            sx={{ px: 4 }}
+                                            onClick={handleWishlist}
+                                        >
+                                            {isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                                        </Button>
+                                    </Grid>
+                                </Grid>
+                            </Box>
+
+                            {/* Reviews Section */}
+                            <Box sx={{ mt: 6 }}>
+                                <Typography variant="h6" gutterBottom>
+                                    Customer Reviews
+                                </Typography>
+
+                                {/* Review Form */}
+                                <Box component="form" onSubmit={handleSubmitReview} sx={{ mb: 4 }}>
+                                    <Rating
+                                        value={userRating}
+                                        onChange={(event, newValue) => setUserRating(newValue)}
+                                        sx={{ mb: 2 }}
+                                    />
+                                    <TextField
+                                        fullWidth
+                                        multiline
+                                        rows={4}
+                                        value={comment}
+                                        onChange={(e) => setComment(e.target.value)}
+                                        placeholder="Write your review here..."
+                                        sx={{ mb: 2 }}
+                                    />
+                                    <Button type="submit" variant="contained">
+                                        Submit Review
+                                    </Button>
+                                </Box>
+
+                                {/* Reviews List */}
+                                <Box>
+                                    {reviews.map((review) => (
+                                        <Card key={review.id} sx={{ mb: 2, p: 2 }}>
+                                            <Rating value={review.rating} readOnly />
+                                            <Typography variant="body2" sx={{ mt: 1 }}>
+                                                {review.comment}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                By {review.user_name} on {new Date(review.created_at).toLocaleDateString()}
+                                            </Typography>
+                                        </Card>
+                                    ))}
+                                </Box>
+                            </Box>
+                        </Grid>
+                    </Grid>
+                </Box>
+            </Container>
+        </Fade>
     );
 }
 

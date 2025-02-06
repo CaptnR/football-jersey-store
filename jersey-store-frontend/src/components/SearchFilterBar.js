@@ -17,6 +17,7 @@ import {
     Stack,
     Slider,
     InputAdornment,
+    Grid,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -55,6 +56,22 @@ function SearchFilterBar({
         });
     };
 
+    const handleFilterChange = (field, value) => {
+        if (value === null) return;
+        setFilters(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const handlePriceChange = (event, newValue) => {
+        if (!Array.isArray(newValue)) return;
+        setFilters(prev => ({
+            ...prev,
+            priceRange: newValue
+        }));
+    };
+
     return (
         <>
             <Box 
@@ -65,40 +82,70 @@ function SearchFilterBar({
                     alignItems: 'center',
                     gap: 1,
                     width: '100%',
-                    mb: 3,
+                    mb: 4,
+                    p: 3,
+                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(8px)',
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
                 }}
             >
-                <TextField
-                    fullWidth
-                    placeholder="Search jerseys..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    size="small"
-                    sx={{ 
-                        bgcolor: 'white',
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 2,
-                        }
-                    }}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon color="action" fontSize="small" />
-                            </InputAdornment>
-                        ),
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton 
-                                    onClick={() => setFilterOpen(true)}
-                                    size="small"
-                                    sx={{ color: 'primary.main' }}
+                <Grid container spacing={3}>
+                    <Grid item xs={12} md={4}>
+                        <TextField
+                            fullWidth
+                            label="Search jerseys"
+                            variant="outlined"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            InputProps={{
+                                sx: {
+                                    borderRadius: 2,
+                                    backgroundColor: 'white',
+                                }
+                            }}
+                        />
+                    </Grid>
+                    
+                    <Grid item xs={12} md={8}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <FormControl fullWidth>
+                                <InputLabel>League</InputLabel>
+                                <Select
+                                    value={filters.league}
+                                    onChange={(e) => handleFilterChange('league', e.target.value)}
+                                    sx={{
+                                        borderRadius: 2,
+                                        backgroundColor: 'white',
+                                    }}
                                 >
-                                    <FilterListIcon fontSize="small" />
-                                </IconButton>
-                            </InputAdornment>
-                        )
-                    }}
-                />
+                                    <MenuItem value="">All Leagues</MenuItem>
+                                    {leagues.map(league => (
+                                        <MenuItem key={league} value={league}>{league}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            <FormControl fullWidth>
+                                <InputLabel>Team</InputLabel>
+                                <Select
+                                    value={filters.team}
+                                    onChange={(e) => handleFilterChange('team', e.target.value)}
+                                    sx={{
+                                        borderRadius: 2,
+                                        backgroundColor: 'white',
+                                    }}
+                                >
+                                    <MenuItem value="">All Teams</MenuItem>
+                                    {teams.map(team => (
+                                        <MenuItem key={team} value={team}>{team}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Box>
+                    </Grid>
+                </Grid>
             </Box>
 
             {/* Filter Dialog */}
@@ -154,7 +201,7 @@ function SearchFilterBar({
                             <InputLabel>Price Range</InputLabel>
                             <Slider
                                 value={filters.priceRange}
-                                onChange={(e, newValue) => setFilters({...filters, priceRange: newValue})}
+                                onChange={handlePriceChange}
                                 valueLabelDisplay="auto"
                                 min={priceRange.min}
                                 max={priceRange.max}

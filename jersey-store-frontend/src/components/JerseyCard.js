@@ -31,9 +31,9 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, isWishlisted, requir
     };
 
     const jerseyData = {
-        id: jersey.id ?? 0,
-        image: jersey.image ?? '/placeholder-jersey.jpeg',
-        price: typeof jersey.price === 'number' ? jersey.price : 0
+        id: jersey?.id ?? 0,
+        image: jersey?.image ?? '/placeholder.jpg',
+        price: typeof jersey?.price === 'number' ? jersey.price : 0
     };
 
     const handleWishlistClick = () => {
@@ -43,7 +43,6 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, isWishlisted, requir
     return (
         <Card sx={{ 
             position: 'relative',
-            borderRadius: 2,
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
             bgcolor: 'background.paper',
             overflow: 'visible',
@@ -52,48 +51,29 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, isWishlisted, requir
             flexDirection: 'column',
             width: '100%',
             maxWidth: '100%',
-            transition: 'transform 0.2s ease-in-out',
+            transition: 'all 0.3s ease-in-out',
             '&:hover': {
-                transform: 'scale(1.05)'
+                transform: 'translateY(-8px)',
+                boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)'
             }
         }}>
-            <IconButton
-                onClick={handleWishlistClick}
-                sx={{
-                    position: 'absolute',
-                    top: 16,
-                    right: 16,
-                    zIndex: 2,
-                    bgcolor: 'white',
-                    width: 40,
-                    height: 40,
-                    padding: 1,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    '&:hover': { 
-                        bgcolor: 'white',
-                        transform: 'scale(1.1)',
-                    },
-                    transition: 'transform 0.2s ease-in-out',
-                }}
-            >
-                {isWishlisted ? (
-                    <FavoriteIcon sx={{ color: 'red', fontSize: 20 }} />
-                ) : (
-                    <FavoriteBorderIcon sx={{ color: 'rgba(0, 0, 0, 0.54)', fontSize: 20 }} />
-                )}
-            </IconButton>
-
-            <CardMedia
-                component="img"
-                height="220"
-                image={jerseyData.image}
-                alt={`${playerData.name} Jersey`}
-                sx={{
-                    objectFit: 'contain',
-                    bgcolor: '#f5f5f5',
-                    p: 2
-                }}
-            />
+            <Box sx={{ position: 'relative', pt: '100%' }}>
+                <CardMedia
+                    component="img"
+                    image={jerseyData.image}
+                    alt={`${playerData.name} Jersey`}
+                    sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        bgcolor: '#f5f5f5',
+                        p: 2
+                    }}
+                />
+            </Box>
 
             <CardContent sx={{ 
                 p: 2,
@@ -160,10 +140,15 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, isWishlisted, requir
                             variant="h6"
                             sx={{ 
                                 fontWeight: 700,
-                                fontSize: '1.25rem'
+                                fontSize: '1.5rem',
+                                color: 'primary.main',
+                                fontFamily: 'Poppins, sans-serif'
                             }}
                         >
-                            ${Number(jerseyData.price).toFixed(2)}
+                            ${Number(jerseyData.price).toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            })}
                         </Typography>
 
                         <Button
