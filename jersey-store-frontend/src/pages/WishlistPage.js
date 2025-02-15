@@ -1,31 +1,25 @@
 // Updated WishlistPage.js with Material-UI components and styling
 
 import React, { useState, useEffect, useContext } from 'react';
-import { getWishlist, removeFromWishlist } from '../api/api';
-import { CartContext } from '../context/CartContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { API } from '../api/api';
 import {
     Container,
-    Box,
-    Typography,
     Grid,
-    Card,
-    CardMedia,
-    Button,
-    IconButton,
-    Alert,
+    Typography,
+    Box,
     CircularProgress,
+    Alert,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import JerseyCard from '../components/JerseyCard';
+import { CartContext } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 
 function WishlistPage() {
-    const [wishlistItems, setWishlistItems] = useState([]);
+    const [wishlist, setWishlist] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { addToCart } = useContext(CartContext);
-    const navigate = useNavigate();
-    const token = localStorage.getItem('token');
+    const { showToast } = useToast();
 
     useEffect(() => {
         fetchWishlist();
@@ -34,11 +28,11 @@ function WishlistPage() {
     const fetchWishlist = async () => {
         try {
             setLoading(true);
-            const response = await getWishlist(token);
-            setWishlistItems(response.data);
+            const response = await API.get('/wishlist/');
+            setWishlist(response.data);
         } catch (error) {
-            setError('Failed to load wishlist');
             console.error('Error fetching wishlist:', error);
+            setError('Failed to load wishlist. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -46,150 +40,105 @@ function WishlistPage() {
 
     const handleRemoveFromWishlist = async (jerseyId) => {
         try {
-            await removeFromWishlist(jerseyId);
-            setWishlistItems(wishlistItems.filter(item => item.id !== jerseyId));
+            await API.delete(`/wishlist/${jerseyId}/`);
+            // Update wishlist after removal
+            setWishlist(prevWishlist => prevWishlist.filter(item => item.id !== jerseyId));
+            showToast('Removed from wishlist', 'success');
         } catch (error) {
             console.error('Error removing from wishlist:', error);
+            showToast('Failed to remove from wishlist', 'error');
+        }
+    };
+
+    const handleAddToCart = (jersey) => {
+        addToCart(jersey);
+        showToast('Added to cart', 'success');
+    };
+
+    const handleMoveToCart = async (jersey) => {
+        try {
+            handleAddToCart(jersey);
+            await handleRemoveFromWishlist(jersey.id);
+            showToast('Moved to cart', 'success');
+        } catch (error) {
+            console.error('Error moving to cart:', error);
+            showToast('Failed to move to cart', 'error');
         }
     };
 
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
                 <CircularProgress />
             </Box>
+        );
+    }
+
+    if (error) {
+        return (
+            <Container maxWidth="lg" sx={{ py: 4 }}>
+                <Alert severity="error">{error}</Alert>
+            </Container>
         );
     }
 
     return (
         <Container maxWidth="lg">
             <Box sx={{ py: 6 }}>
-                <Typography 
-                    variant="h4" 
-                    sx={{
-                        fontFamily: 'Poppins, sans-serif',
-                        fontWeight: 600,
-                        mb: 4,
-                    }}
-                >
-                    My Wishlist
-                </Typography>
-
-                {error && (
-                    <Alert severity="error" sx={{ mb: 4 }}>
-                        {error}
-                    </Alert>
-                )}
-
-                {(!wishlistItems || wishlistItems.length === 0) ? (
-                    <Card 
-                        elevation={0}
+                {/* Hero Section */}
+                <Box className="pastel-hero" sx={{ mb: 6 }}>
+                    <Typography 
+                        variant="h4" 
+                        className="hero-title"
                         sx={{ 
-                            p: 6,
-                            textAlign: 'center',
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                            backdropFilter: 'blur(8px)',
-                            border: '1px solid',
-                            borderColor: 'divider',
+                            fontFamily: 'Poppins, sans-serif',
+                            fontWeight: 600,
+                            mb: 2 
                         }}
                     >
-                        <Typography variant="h6" color="text.secondary">
+                        My Wishlist
+                    </Typography>
+                    <Typography 
+                        variant="subtitle1" 
+                        className="hero-subtitle"
+                        sx={{ 
+                            fontFamily: 'Poppins, sans-serif',
+                            color: 'text.secondary' 
+                        }}
+                    >
+                        Your favorite jerseys in one place
+                    </Typography>
+                </Box>
+
+                {wishlist.length === 0 ? (
+                    <Box 
+                        sx={{ 
+                            textAlign: 'center',
+                            py: 8,
+                            backgroundColor: 'background.paper',
+                            borderRadius: 2,
+                            boxShadow: 1
+                        }}
+                    >
+                        <Typography 
+                            variant="h6"
+                            sx={{ 
+                                color: 'text.secondary',
+                                fontFamily: 'Poppins, sans-serif' 
+                            }}
+                        >
                             Your wishlist is empty
                         </Typography>
-                        <Button
-                            component={Link}
-                            to="/"
-                            variant="contained"
-                            sx={{ mt: 2 }}
-                        >
-                            Continue Shopping
-                        </Button>
-                    </Card>
+                    </Box>
                 ) : (
-                    <Grid container spacing={3}>
-                        {wishlistItems.map((item) => (
-                            <Grid item xs={12} sm={6} md={4} key={item.id}>
-                                <Card
-                                    elevation={0}
-                                    sx={{
-                                        height: '100%',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                        backdropFilter: 'blur(8px)',
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        transition: 'transform 0.2s ease-in-out',
-                                        '&:hover': {
-                                            transform: 'translateY(-4px)',
-                                        },
-                                    }}
-                                >
-                                    <Box sx={{ position: 'relative', pt: '100%' }}>
-                                        <CardMedia
-                                            component="img"
-                                            image={item.image}
-                                            alt={item.player.name}
-                                            sx={{
-                                                position: 'absolute',
-                                                top: 0,
-                                                left: 0,
-                                                width: '100%',
-                                                height: '100%',
-                                                objectFit: 'contain',
-                                                p: 2,
-                                            }}
-                                        />
-                                    </Box>
-                                    <Box sx={{ p: 2, flexGrow: 1 }}>
-                                        <Typography
-                                            variant="h6"
-                                            sx={{
-                                                fontWeight: 600,
-                                                mb: 1,
-                                            }}
-                                        >
-                                            {item.player.name}
-                                        </Typography>
-                                        <Typography
-                                            variant="body2"
-                                            color="text.secondary"
-                                            sx={{ mb: 2 }}
-                                        >
-                                            {item.player.team.name}
-                                        </Typography>
-                                        <Typography
-                                            variant="h6"
-                                            color="primary"
-                                            sx={{
-                                                fontWeight: 600,
-                                                mb: 2,
-                                            }}
-                                        >
-                                            ${item.price}
-                                        </Typography>
-                                        <Box sx={{ display: 'flex', gap: 1 }}>
-                                            <Button
-                                                variant="contained"
-                                                fullWidth
-                                                startIcon={<ShoppingCartIcon />}
-                                                onClick={() => addToCart(item)}
-                                            >
-                                                Add to Cart
-                                            </Button>
-                                            <IconButton
-                                                onClick={() => handleRemoveFromWishlist(item.id)}
-                                                color="error"
-                                                sx={{
-                                                    border: '1px solid',
-                                                    borderColor: 'divider',
-                                                }}
-                                            >
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        </Box>
-                                    </Box>
-                                </Card>
+                    <Grid container spacing={4}>
+                        {wishlist.map((jersey) => (
+                            <Grid item xs={12} sm={6} md={4} lg={3} key={jersey.id}>
+                                <JerseyCard
+                                    jersey={jersey}
+                                    onRemoveFromWishlist={() => handleRemoveFromWishlist(jersey.id)}
+                                    isInWishlist={true}
+                                />
                             </Grid>
                         ))}
                     </Grid>

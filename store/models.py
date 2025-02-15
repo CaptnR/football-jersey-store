@@ -36,24 +36,19 @@ class Customization(models.Model):
         return f"Customization for {self.jersey.player.name}"
     
 class Order(models.Model):
-    STATUS_CHOICES = (
-        ('pending', 'Pending'),
+    STATUS_CHOICES = [
         ('processing', 'Processing'),
         ('shipped', 'Shipped'),
         ('delivered', 'Delivered'),
-        ('cancelled', 'Cancelled')
-    )
+        ('cancelled', 'Cancelled'),
+    ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    items = models.JSONField()  # This stores the cart items
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(
-        max_length=20, 
-        choices=STATUS_CHOICES, 
-        default='pending'
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    items = models.JSONField(default=list, null=True, blank=True)
 
     def __str__(self):
         return f"Order {self.id} by {self.user.username}"
@@ -89,7 +84,7 @@ class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE, related_name='reviews')
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
-    comment = models.TextField()
+    comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

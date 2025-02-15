@@ -18,6 +18,7 @@ import {
     Alert,
     CircularProgress,
 } from '@mui/material';
+import { API } from '../api/api';
 
 const steps = ['Shipping', 'Payment', 'Review'];
 
@@ -38,8 +39,10 @@ function CheckoutPage() {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
-    const { cartItems, calculateTotal } = useContext(CartContext);
+    const { cartItems, calculateTotal, clearCart } = useContext(CartContext);
     const navigate = useNavigate();
 
     const handleNext = () => {
@@ -60,16 +63,41 @@ function CheckoutPage() {
         handleNext();
     };
 
-    const handleOrderSubmit = async () => {
-        setLoading(true);
-        setError('');
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+
         try {
-            // Order submission logic here
-            navigate('/orders');
+            // Get cart items from context
+            const orderData = {
+                items: cartItems,  // Send the entire cart items array
+                total_price: calculateTotal(),
+                payment: {
+                    name_on_card: paymentData.cardName,
+                    card_number: paymentData.cardNumber,
+                    expiration_date: paymentData.expiryDate,
+                }
+            };
+
+            console.log('Sending order data:', orderData); // Debug log
+
+            const response = await API.post('/checkout/', orderData);
+
+            if (response.status === 201) {
+                // Clear cart
+                clearCart();
+                // Show success message
+                setSuccessMessage('Order placed successfully!');
+                // Redirect to orders page after a delay
+                setTimeout(() => {
+                    navigate('/orders');
+                }, 2000);
+            }
         } catch (error) {
-            setError('Failed to place order. Please try again.');
+            console.error('Checkout error:', error.response?.data || error.message);
+            setError(error.response?.data?.error || 'Failed to place order. Please try again.');
         } finally {
-            setLoading(false);
+            setIsSubmitting(false);
         }
     };
 
@@ -302,15 +330,15 @@ function CheckoutPage() {
                         <Button
                             variant="contained"
                             fullWidth
-                            onClick={handleOrderSubmit}
-                            disabled={loading}
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
                             sx={{
                                 mt: 3,
                                 py: 1.5,
                                 fontSize: '1.1rem',
                             }}
                         >
-                            {loading ? <CircularProgress size={24} /> : 'Place Order'}
+                            {isSubmitting ? <CircularProgress size={24} /> : 'Place Order'}
                         </Button>
                     </Box>
                 );
@@ -337,6 +365,12 @@ function CheckoutPage() {
                 {error && (
                     <Alert severity="error" sx={{ mb: 4 }}>
                         {error}
+                    </Alert>
+                )}
+
+                {successMessage && (
+                    <Alert severity="success" sx={{ mb: 4 }}>
+                        {successMessage}
                     </Alert>
                 )}
 

@@ -1,156 +1,123 @@
 // Updated LoginPage.js with Material-UI components and styling
 
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { API } from '../api/api';
+import { validateLogin } from '../utils/validation';
+import { useToast } from '../context/ToastContext';
 import {
     Container,
     Box,
-    Typography,
     TextField,
     Button,
-    Alert,
+    Typography,
     Card,
-    Grid,
-    Link,
+    Alert,
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
 
 function LoginPage() {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
-    const from = location.state?.from || '/';
+    const { showToast } = useToast();
+    
+    const [formData, setFormData] = useState({
+        username: '',
+        password: ''
+    });
+    const [errors, setErrors] = useState({});
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = async (e) => {
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        // Clear error when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validate form
+        const validationErrors = validateLogin(formData);
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+
         try {
-            const response = await axios.post('http://127.0.0.1:8000/api/login/', {
-                username,
-                password,
-            });
-            
+            setLoading(true);
+            const response = await API.post('/login/', formData);
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('is_admin', response.data.is_admin.toString());
+            showToast('Login successful!', 'success');
             
-            // Redirect back to the original page
-            navigate(from, { replace: true });
+            // Navigate to the page user came from or homepage
+            const from = location.state?.from?.pathname || '/';
+            navigate(from);
         } catch (error) {
-            setError('Invalid credentials');
             console.error('Login error:', error);
+            showToast(error.response?.data?.detail || 'Invalid username or password', 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <Container component="main" maxWidth="sm">
-            <Box
-                sx={{
-                    minHeight: '80vh',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}
-            >
-                <Card
-                    elevation={0}
-                    sx={{
-                        p: 4,
-                        width: '100%',
-                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                        backdropFilter: 'blur(8px)',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                    }}
-                >
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                        }}
-                    >
-                        <Typography 
-                            component="h1" 
-                            variant="h4"
-                            sx={{
-                                fontFamily: 'Poppins, sans-serif',
-                                fontWeight: 600,
-                                mb: 4,
-                            }}
+        <Container maxWidth="sm">
+            <Box sx={{ mt: 8, mb: 4 }}>
+                <Card sx={{ p: 4 }}>
+                    <Typography variant="h4" gutterBottom align="center">
+                        Login
+                    </Typography>
+                    
+                    <form onSubmit={handleSubmit}>
+                        <TextField
+                            fullWidth
+                            label="Username"
+                            name="username"
+                            value={formData.username}
+                            onChange={handleChange}
+                            error={!!errors.username}
+                            helperText={errors.username}
+                            margin="normal"
+                        />
+                        
+                        <TextField
+                            fullWidth
+                            label="Password"
+                            name="password"
+                            type="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            error={!!errors.password}
+                            helperText={errors.password}
+                            margin="normal"
+                        />
+
+                        <Button
+                            type="submit"
+                            fullWidth
+                            variant="contained"
+                            size="large"
+                            disabled={loading}
+                            sx={{ mt: 3, mb: 2 }}
                         >
-                            Sign In
-                        </Typography>
-                        <Box component="form" onSubmit={handleLogin} sx={{ mt: 1, width: '100%' }}>
-                            <TextField
-                                margin="normal"
-                                required
-                                fullWidth
-                                id="username"
-                                label="Username"
-                                name="username"
-                                autoComplete="username"
-                                autoFocus
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: 2,
-                                        backgroundColor: 'white',
-                                    }
-                                }}
-                            />
-                            <TextField
-                                margin="normal"
-                                required
-                                fullWidth
-                                name="password"
-                                label="Password"
-                                type="password"
-                                id="password"
-                                autoComplete="current-password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: 2,
-                                        backgroundColor: 'white',
-                                    }
-                                }}
-                            />
-                            <Button
-                                type="submit"
-                                fullWidth
-                                variant="contained"
-                                sx={{ 
-                                    mt: 3, 
-                                    mb: 2,
-                                    py: 1.5,
-                                    fontSize: '1.1rem',
-                                }}
-                            >
-                                Sign In
-                            </Button>
-                            <Grid container justifyContent="flex-end">
-                                <Grid item>
-                                    <Link 
-                                        component={RouterLink} 
-                                        to="/signup"
-                                        sx={{
-                                            color: 'primary.main',
-                                            textDecoration: 'none',
-                                            '&:hover': {
-                                                textDecoration: 'underline',
-                                            }
-                                        }}
-                                    >
-                                        Don't have an account? Sign Up
-                                    </Link>
-                                </Grid>
-                            </Grid>
-                        </Box>
-                    </Box>
+                            {loading ? 'Logging in...' : 'Login'}
+                        </Button>
+                    </form>
+
+                    <Typography align="center" sx={{ mt: 2 }}>
+                        Don't have an account?{' '}
+                        <Link to="/signup">Sign up</Link>
+                    </Typography>
                 </Card>
             </Box>
         </Container>

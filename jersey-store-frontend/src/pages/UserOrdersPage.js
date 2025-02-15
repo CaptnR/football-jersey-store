@@ -18,6 +18,8 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 import CancelIcon from '@mui/icons-material/Cancel';
+import { API } from '../api/api';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 const getStatusIcon = (status) => {
     switch (status) {
@@ -48,7 +50,7 @@ const getStatusColor = (status) => {
 function UserOrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         fetchOrders();
@@ -56,14 +58,12 @@ function UserOrdersPage() {
 
     const fetchOrders = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://127.0.0.1:8000/api/orders/', {
-                headers: { Authorization: `Token ${token}` }
-            });
-            setOrders(response.data);
+            setLoading(true);
+            const response = await API.get('/orders/my_orders/');
+            setOrders(response.data || []); // Ensure we always have an array
         } catch (error) {
-            setError('Failed to load orders');
             console.error('Error fetching orders:', error);
+            setError('Failed to load orders. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -71,148 +71,75 @@ function UserOrdersPage() {
 
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                 <CircularProgress />
             </Box>
         );
     }
 
+    if (error) {
+        return (
+            <Container maxWidth="lg" sx={{ py: 4 }}>
+                <Alert severity="error">{error}</Alert>
+            </Container>
+        );
+    }
+
     return (
         <Container maxWidth="lg">
-            <Box sx={{ py: 6 }}>
-                <Typography 
-                    variant="h4" 
-                    sx={{
-                        fontFamily: 'Poppins, sans-serif',
-                        fontWeight: 600,
-                        mb: 4,
-                    }}
-                >
-                    My Orders
-                </Typography>
+            <LoadingOverlay loading={loading}>
+                <Box sx={{ py: 4 }}>
+                    <Typography variant="h4" gutterBottom>
+                        My Orders
+                    </Typography>
 
-                {error && (
-                    <Alert severity="error" sx={{ mb: 4 }}>
-                        {error}
-                    </Alert>
-                )}
-
-                {orders.length === 0 ? (
-                    <Card
-                        elevation={0}
-                        sx={{
-                            p: 6,
-                            textAlign: 'center',
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                            backdropFilter: 'blur(8px)',
-                            border: '1px solid',
-                            borderColor: 'divider',
-                        }}
-                    >
-                        <Typography variant="h6" color="text.secondary" gutterBottom>
-                            No orders yet
-                        </Typography>
-                        <Button
-                            component={Link}
-                            to="/"
-                            variant="contained"
-                            sx={{ mt: 2 }}
-                        >
-                            Start Shopping
-                        </Button>
-                    </Card>
-                ) : (
-                    <Grid container spacing={3}>
-                        {orders.map((order) => (
-                            <Grid item xs={12} key={order.id}>
-                                <Card
-                                    elevation={0}
-                                    sx={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                        backdropFilter: 'blur(8px)',
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                    }}
-                                >
-                                    <Box sx={{ p: 3 }}>
-                                        <Grid container spacing={2} alignItems="center">
-                                            <Grid item xs={12} sm={6}>
-                                                <Typography
-                                                    variant="subtitle1"
-                                                    sx={{ fontWeight: 600 }}
-                                                >
-                                                    Order #{order.id}
-                                                </Typography>
-                                                <Typography
-                                                    variant="body2"
-                                                    color="text.secondary"
-                                                >
-                                                    Placed on: {new Date(order.created_at).toLocaleDateString()}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={12} sm={3}>
-                                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                                    ${order.total_price}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={12} sm={3}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    {getStatusIcon(order.status)}
-                                                    <Chip
-                                                        label={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                                                        color={getStatusColor(order.status)}
-                                                        size="small"
-                                                    />
-                                                </Box>
-                                            </Grid>
-                                        </Grid>
-
-                                        <Box sx={{ mt: 2 }}>
-                                            {order.items.map((item, index) => (
-                                                <Box
-                                                    key={index}
-                                                    sx={{
-                                                        py: 2,
-                                                        borderTop: '1px solid',
-                                                        borderColor: 'divider',
-                                                    }}
-                                                >
-                                                    <Grid container spacing={2} alignItems="center">
-                                                        <Grid item xs={2} sm={1}>
-                                                            <img
-                                                                src={item.image}
-                                                                alt={item.name}
-                                                                style={{
-                                                                    width: '100%',
-                                                                    height: 'auto',
-                                                                    maxWidth: '50px',
-                                                                }}
-                                                            />
-                                                        </Grid>
-                                                        <Grid item xs={7} sm={9}>
-                                                            <Typography variant="body1">
-                                                                {item.name}
-                                                            </Typography>
-                                                            <Typography variant="body2" color="text.secondary">
-                                                                Quantity: {item.quantity}
-                                                            </Typography>
-                                                        </Grid>
-                                                        <Grid item xs={3} sm={2}>
-                                                            <Typography variant="body1" align="right">
-                                                                ${item.price * item.quantity}
-                                                            </Typography>
-                                                        </Grid>
-                                                    </Grid>
-                                                </Box>
-                                            ))}
+                    {orders.length === 0 ? (
+                        <Card sx={{ p: 4, textAlign: 'center' }}>
+                            <Typography>You haven't placed any orders yet.</Typography>
+                        </Card>
+                    ) : (
+                        <Grid container spacing={3}>
+                            {orders.map((order) => (
+                                <Grid item xs={12} key={order.id}>
+                                    <Card sx={{ p: 3 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                            <Typography variant="h6">
+                                                Order #{order.id}
+                                            </Typography>
+                                            <Chip
+                                                label={order.status}
+                                                color={
+                                                    order.status === 'delivered' ? 'success' :
+                                                    order.status === 'processing' ? 'info' :
+                                                    order.status === 'cancelled' ? 'error' : 'default'
+                                                }
+                                            />
                                         </Box>
-                                    </Box>
-                                </Card>
-                            </Grid>
-                        ))}
-                    </Grid>
-                )}
-            </Box>
+                                        <Typography color="text.secondary" gutterBottom>
+                                            Placed on: {new Date(order.created_at).toLocaleDateString()}
+                                        </Typography>
+                                        <Typography variant="h6" color="primary">
+                                            Total: ${order.total_price}
+                                        </Typography>
+                                        
+                                        {/* Order Items */}
+                                        {order.items && order.items.map((item, index) => (
+                                            <Box key={index} sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                                                <Typography>
+                                                    {item.player_name} Jersey - Quantity: {item.quantity}
+                                                </Typography>
+                                                <Typography color="text.secondary">
+                                                    ${item.price} each
+                                                </Typography>
+                                            </Box>
+                                        ))}
+                                    </Card>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    )}
+                </Box>
+            </LoadingOverlay>
         </Container>
     );
 }

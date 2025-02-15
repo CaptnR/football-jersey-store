@@ -10,7 +10,7 @@ export const CartProvider = ({ children }) => {
             const savedCart = localStorage.getItem('cart');
             return savedCart ? JSON.parse(savedCart) : [];
         } catch (error) {
-            console.error('Error parsing cart from localStorage:', error);
+            console.error('Error loading cart from localStorage:', error);
             return [];
         }
     });
@@ -25,32 +25,42 @@ export const CartProvider = ({ children }) => {
 
     const addToCart = (jersey) => {
         setCartItems(prevItems => {
-            const existingItem = prevItems.find(item => item.id === jersey.id);
+            // Ensure prevItems is an array
+            const items = Array.isArray(prevItems) ? prevItems : [];
+            const existingItem = items.find(item => item.id === jersey.id);
+            
             if (existingItem) {
-                return prevItems.map(item =>
+                return items.map(item =>
                     item.id === jersey.id
                         ? { ...item, quantity: item.quantity + 1 }
                         : item
                 );
             }
-            return [...prevItems, { ...jersey, quantity: 1 }];
+            return [...items, { ...jersey, quantity: 1 }];
         });
     };
 
     const removeFromCart = (jerseyId) => {
-        setCartItems(prevItems => prevItems.filter(item => item.id !== jerseyId));
+        setCartItems(prevItems => {
+            // Ensure prevItems is an array
+            const items = Array.isArray(prevItems) ? prevItems : [];
+            return items.filter(item => item.id !== jerseyId);
+        });
     };
 
     const updateQuantity = (jerseyId, quantity) => {
         if (quantity < 1) return;
-        setCartItems(prevItems =>
-            prevItems.map(item =>
+        setCartItems(prevItems => {
+            // Ensure prevItems is an array
+            const items = Array.isArray(prevItems) ? prevItems : [];
+            return items.map(item =>
                 item.id === jerseyId ? { ...item, quantity } : item
-            )
-        );
+            );
+        });
     };
 
     const calculateTotal = () => {
+        if (!Array.isArray(cartItems)) return 0;
         return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
     };
 
