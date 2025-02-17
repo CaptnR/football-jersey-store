@@ -13,10 +13,14 @@ import {
     CardContent,
     Button,
     TextField,
+    IconButton,
+    InputAdornment,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { useToast } from '../context/ToastContext';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 
 function CartPage() {
     const { cartItems, removeFromCart, updateQuantity, loading } = useContext(CartContext);
@@ -41,6 +45,13 @@ function CartPage() {
         }
         updateQuantity(itemId, newQuantity);
         showToast('Cart updated', 'success');
+    };
+
+    const handleQuantityChange = (itemId, currentQuantity, change) => {
+        const newQuantity = currentQuantity + change;
+        if (newQuantity >= 1) {
+            handleUpdateQuantity(itemId, newQuantity);
+        }
     };
 
     return (
@@ -124,18 +135,83 @@ function CartPage() {
                                                             ${(item.price * item.quantity).toFixed(2)}
                                                         </Typography>
                                                     </Box>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                                        <TextField
-                                                            type="number"
-                                                            value={item.quantity}
-                                                            onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value))}
-                                                            InputProps={{ inputProps: { min: 1 } }}
-                                                            sx={{ width: '100px' }}
-                                                        />
+                                                    <Box sx={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        gap: 2,
+                                                        mb: 2 
+                                                    }}>
+                                                        {/* Quantity Controls */}
+                                                        <Box sx={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center',
+                                                            border: '1px solid',
+                                                            borderColor: 'divider',
+                                                            borderRadius: '8px',
+                                                            bgcolor: '#fff',
+                                                            height: '40px',
+                                                            minWidth: '120px',
+                                                            justifyContent: 'space-between'
+                                                        }}>
+                                                            <IconButton 
+                                                                onClick={() => handleQuantityChange(item.id, item.quantity, -1)}
+                                                                disabled={item.quantity <= 1}
+                                                                sx={{ 
+                                                                    width: '40px',
+                                                                    height: '40px',
+                                                                    borderRadius: '8px',
+                                                                    '&:hover:not(:disabled)': {
+                                                                        bgcolor: 'rgba(0, 0, 0, 0.04)'
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <RemoveIcon fontSize="small" />
+                                                            </IconButton>
+
+                                                            <Typography 
+                                                                variant="body1"
+                                                                sx={{ 
+                                                                    fontWeight: 600,
+                                                                    userSelect: 'none',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    minWidth: '40px'
+                                                                }}
+                                                            >
+                                                                {item.quantity}
+                                                            </Typography>
+
+                                                            <IconButton 
+                                                                onClick={() => handleQuantityChange(item.id, item.quantity, 1)}
+                                                                sx={{ 
+                                                                    width: '40px',
+                                                                    height: '40px',
+                                                                    borderRadius: '8px',
+                                                                    '&:hover': {
+                                                                        bgcolor: 'rgba(0, 0, 0, 0.04)'
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <AddIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Box>
+
+                                                        {/* Remove Button */}
                                                         <Button
                                                             startIcon={<DeleteIcon />}
                                                             onClick={() => handleRemoveItem(item.id)}
                                                             color="error"
+                                                            variant="outlined"
+                                                            size="medium"
+                                                            sx={{
+                                                                height: '40px',
+                                                                borderRadius: '8px',
+                                                                '&:hover': {
+                                                                    bgcolor: 'error.lighter',
+                                                                    borderColor: 'error.main'
+                                                                }
+                                                            }}
                                                         >
                                                             Remove
                                                         </Button>

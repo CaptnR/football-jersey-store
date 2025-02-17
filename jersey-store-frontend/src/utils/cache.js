@@ -1,23 +1,22 @@
-export const cacheData = (key, data, expiryMinutes = 5) => {
-    const item = {
-        data,
-        timestamp: new Date().getTime(),
-        expiryMinutes
-    };
-    localStorage.setItem(key, JSON.stringify(item));
-};
+export const cacheManager = {
+    set: (key, data, ttl = 5 * 60 * 1000) => {
+        const item = {
+            data,
+            timestamp: Date.now(),
+            ttl
+        };
+        localStorage.setItem(key, JSON.stringify(item));
+    },
 
-export const getCachedData = (key) => {
-    const item = localStorage.getItem(key);
-    if (!item) return null;
+    get: (key) => {
+        const item = localStorage.getItem(key);
+        if (!item) return null;
 
-    const { data, timestamp, expiryMinutes } = JSON.parse(item);
-    const now = new Date().getTime();
-    
-    if (now - timestamp > expiryMinutes * 60 * 1000) {
-        localStorage.removeItem(key);
-        return null;
+        const { data, timestamp, ttl } = JSON.parse(item);
+        if (Date.now() - timestamp > ttl) {
+            localStorage.removeItem(key);
+            return null;
+        }
+        return data;
     }
-    
-    return data;
 }; 

@@ -20,6 +20,8 @@ from rest_framework import serializers
 from django.http import Http404
 from contextlib import suppress
 from django.core.cache import cache
+from django.db.models import Prefetch
+from django.db.models import Count, Avg
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow public access
@@ -67,36 +69,16 @@ class JerseyViewSet(viewsets.ModelViewSet):
     filterset_fields = ['player__team__league', 'player__team__name']
 
     def get_queryset(self):
-        queryset = Jersey.objects.select_related('player', 'player__team').prefetch_related('reviews').all()
-        
-        # Handle search
-        search_query = self.request.query_params.get('search', None)
-        if search_query:
-            queryset = queryset.filter(
-                models.Q(player__name__icontains=search_query) |
-                models.Q(player__team__name__icontains=search_query) |
-                models.Q(player__team__league__icontains=search_query)
-            )
-        
-        # Handle price range filter
-        min_price = self.request.query_params.get('min_price')
-        max_price = self.request.query_params.get('max_price')
-        
-        if min_price:
-            try:
-                min_price = float(min_price)
-                queryset = queryset.filter(price__gte=min_price)
-            except (TypeError, ValueError):
-                pass
-                
-        if max_price:
-            try:
-                max_price = float(max_price)
-                queryset = queryset.filter(price__lte=max_price)
-            except (TypeError, ValueError):
-                pass
-            
-        return queryset
+        return Jersey.objects.select_related(
+            'player', 
+            'player__team'
+        ).prefetch_related(
+            'reviews',
+            'wishlist_items'
+        ).annotate(
+            review_count=Count('reviews'),
+            avg_rating=Avg('reviews__rating')
+        )
     
     def retrieve(self, request, *args, **kwargs):
         try:
@@ -248,30 +230,67 @@ class WishlistView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """Add a jersey to the user's wishlist."""
-        jersey_id = request.data.get('jersey_id')
-        if not jersey_id:
-            return Response({'error': 'Jersey ID is required'}, status=400)
-
         try:
-            Wishlist.objects.create(user=request.user, jersey_id=jersey_id)
-            return Response({'message': 'Jersey added to wishlist'}, status=201)
+            jersey_id = request.data.get('jersey')
+            print(f"Received wishlist request with data: {request.data}")  # Debug log
+            
+            if not jersey_id:
+                return Response(
+                    {'error': 'Jersey ID is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Verify jersey exists
+            try:
+                jersey = Jersey.objects.get(id=jersey_id)
+            except Jersey.DoesNotExist:
+                return Response(
+                    {'error': f'Jersey with id {jersey_id} does not exist'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Check if already in wishlist
+            wishlist_item, created = Wishlist.objects.get_or_create(
+                user=request.user,
+                jersey=jersey
+            )
+            
+            return Response(
+                {
+                    'message': 'Added to wishlist successfully',
+                    'created': created
+                },
+                status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            )
         except Exception as e:
-            return Response({'error': str(e)}, status=400)
+            print(f"Wishlist error: {str(e)}")  # Debug log
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    def delete(self, request, jersey_id=None):
+    def delete(self, request, jersey_id):
         try:
-            # Find and delete the wishlist item
-            wishlist_item = Wishlist.objects.get(
+            wishlist_item = Wishlist.objects.filter(
                 user=request.user,
                 jersey_id=jersey_id
-            )
+            ).first()
+            
+            if not wishlist_item:
+                return Response(
+                    {'error': 'Item not found in wishlist'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
             wishlist_item.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Wishlist.DoesNotExist:
             return Response(
-                {"error": "Item not found in wishlist"},
-                status=status.HTTP_404_NOT_FOUND
+                {'message': 'Removed from wishlist successfully'},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
 class FilterMetadataView(APIView):

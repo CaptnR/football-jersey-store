@@ -41,8 +41,14 @@ export const fetchTeams = () => API.get('/teams/');
 export const fetchPlayers = () => API.get('/players/');
 export const fetchCustomizations = () => API.get('/customizations/');
 export const saveCustomization = (data) => API.post('/customizations/', data);
-export const addToWishlist = (jerseyId) => API.post(`/wishlist/`, { jersey_id: jerseyId });
-export const removeFromWishlist = (jerseyId) => API.delete(`/wishlist/${jerseyId}/`);
+export const addToWishlist = (jerseyId) => {
+    console.log('Adding to wishlist:', jerseyId); // Debug log
+    return API.post('/wishlist/', { jersey: parseInt(jerseyId) });
+};
+export const removeFromWishlist = (jerseyId) => {
+    console.log('Removing from wishlist:', jerseyId); // Debug log
+    return API.delete(`/wishlist/${parseInt(jerseyId)}/`);
+};
 export const getWishlist = () => API.get('/wishlist/');
 
 export const setAuthToken = (token) => {

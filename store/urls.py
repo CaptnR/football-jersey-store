@@ -28,8 +28,8 @@ urlpatterns += [
     path('admin/orders/<int:pk>/', AdminOrderView.as_view(), name='admin-order-detail'),
     # Admin dashboard
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
-    path('wishlist/', WishlistView.as_view(), name='wishlist'),
-    path('wishlist/<int:jersey_id>/', WishlistView.as_view(), name='wishlist-detail'),
+    path('wishlist/', WishlistView.as_view(), name='wishlist-add'),
+    path('wishlist/<int:jersey_id>/', WishlistView.as_view(), name='wishlist-remove'),
 ]
 
 urlpatterns += [

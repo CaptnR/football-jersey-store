@@ -70,12 +70,13 @@ class Payment(models.Model):
         return f"Payment for Order {self.order.id}"
 
 class Wishlist(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Tie wishlist to a user
-    jersey = models.ForeignKey('Jersey', on_delete=models.CASCADE)  # Tie to a jersey
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE, related_name='wishlist_items')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'jersey')  # Prevent duplicate entries in the wishlist
+        unique_together = ('user', 'jersey')
+        db_table = 'store_wishlist'
 
     def __str__(self):
         return f"{self.user.username}'s wishlist item: {self.jersey.player.name}"

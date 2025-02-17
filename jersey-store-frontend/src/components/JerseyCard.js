@@ -41,13 +41,24 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
         price: typeof jersey?.price === 'number' ? jersey.price : 0
     };
 
-    const handleWishlistAction = (e) => {
-        e.preventDefault(); // Prevent navigation
-        e.stopPropagation(); // Prevent event bubbling
-        if (isInWishlist) {
-            onRemoveFromWishlist(jersey.id);
-        } else {
-            onAddToWishlist(jersey.id);
+    const handleWishlistAction = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!jersey?.id) {
+            console.error('Invalid jersey ID:', jersey);
+            return;
+        }
+
+        try {
+            if (isInWishlist) {
+                await onRemoveFromWishlist(jersey.id);
+            } else {
+                await onAddToWishlist(jersey.id);
+            }
+        } catch (error) {
+            console.error('Wishlist action failed:', error.response?.data || error.message);
+            // You might want to show an error message to the user here
         }
     };
 

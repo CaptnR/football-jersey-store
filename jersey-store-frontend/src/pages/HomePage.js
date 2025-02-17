@@ -1,7 +1,7 @@
 // Updated HomePage.js with vertical layout for search and filter elements
 
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchJerseys, addToWishlist, removeFromWishlist } from '../api/api';
 import { API } from '../api/api';
 import {
@@ -29,6 +29,7 @@ import LoadingOverlay from '../components/LoadingOverlay';
 
 function HomePage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [jerseys, setJerseys] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -45,25 +46,40 @@ function HomePage() {
     const [teams, setTeams] = useState([]);
     const [metadata, setMetadata] = useState(null);
     const isAuthenticated = !!localStorage.getItem('token');
+    const [toast, setToast] = useState({ open: false, message: '', severity: 'info' });
 
     // Add useEffect to watch for search and filter changes
     useEffect(() => {
         fetchAllJerseys();
-    }, [searchQuery, filters]);
+    }, [searchQuery, filters, isAuthenticated]);
 
     const fetchAllJerseys = async () => {
         try {
             setLoading(true);
-            const response = await API.get('/jerseys/', {
-                params: {
-                    search: searchQuery,
-                    min_price: filters.priceRange[0],
-                    max_price: filters.priceRange[1],
-                    league: filters.league,
-                    team: filters.team
-                }
-            });
-            setJerseys(response.data);
+            const [jerseysResponse, wishlistResponse] = await Promise.all([
+                API.get('/jerseys/', {
+                    params: {
+                        search: searchQuery,
+                        min_price: filters.priceRange[0],
+                        max_price: filters.priceRange[1],
+                        league: filters.league,
+                        team: filters.team
+                    }
+                }),
+                isAuthenticated ? API.get('/wishlist/') : Promise.resolve({ data: [] })
+            ]);
+
+            // Create a Set of wishlisted jersey IDs
+            const wishlistedIds = new Set(wishlistResponse.data.map(item => item.id));
+            
+            // Add isInWishlist property to each jersey
+            const jerseysWithWishlist = jerseysResponse.data.map(jersey => ({
+                ...jersey,
+                isInWishlist: wishlistedIds.has(jersey.id)
+            }));
+
+            setJerseys(jerseysWithWishlist);
+            setWishlistedItems(wishlistedIds);
         } catch (error) {
             console.error('Error fetching jerseys:', error.response?.data || error.message);
             setError('Failed to load jerseys. Please try again later.');
@@ -128,9 +144,25 @@ function HomePage() {
     };
 
     const handleAddToWishlist = async (jerseyId) => {
+        if (!isAuthenticated) {
+            navigate('/login', { 
+                state: { from: location.pathname }
+            });
+            return;
+        }
+
+        if (!jerseyId || isNaN(jerseyId)) {
+            setToast({
+                open: true,
+                message: 'Invalid jersey ID',
+                severity: 'error'
+            });
+            return;
+        }
+        
         try {
-            await API.post('/wishlist/', { jersey_id: jerseyId });
-            // Update the jerseys state to reflect the new wishlist status
+            await API.post('/wishlist/', { jersey: parseInt(jerseyId) });
+            setWishlistedItems(prev => new Set([...prev, jerseyId]));
             setJerseys(prevJerseys => 
                 prevJerseys.map(jersey => 
                     jersey.id === jerseyId 
@@ -138,14 +170,29 @@ function HomePage() {
                         : jersey
                 )
             );
+            setToast({
+                open: true,
+                message: 'Added to wishlist successfully',
+                severity: 'success'
+            });
         } catch (error) {
-            console.error('Error adding to wishlist:', error);
+            setToast({
+                open: true,
+                message: error.response?.data?.error || 'Failed to add to wishlist',
+                severity: 'error'
+            });
         }
     };
 
     const handleRemoveFromWishlist = async (jerseyId) => {
         try {
+            console.log('Removing from wishlist with ID:', jerseyId); // Debug log
             await API.delete(`/wishlist/${jerseyId}/`);
+            setWishlistedItems(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(jerseyId);
+                return newSet;
+            });
             // Update the jerseys state to reflect the new wishlist status
             setJerseys(prevJerseys => 
                 prevJerseys.map(jersey => 
@@ -155,7 +202,7 @@ function HomePage() {
                 )
             );
         } catch (error) {
-            console.error('Error removing from wishlist:', error);
+            console.error('Error removing from wishlist:', error.response?.data || error.message);
         }
     };
 
