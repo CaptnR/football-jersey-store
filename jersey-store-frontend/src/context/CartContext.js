@@ -5,109 +5,79 @@ export const CartContext = createContext();
 
 // Cart Provider Component
 export const CartProvider = ({ children }) => {
-    // Initialize cart with proper structure and validation
-    const [cart, setCart] = useState(() => {
+    const [cartItems, setCartItems] = useState(() => {
         try {
             const savedCart = localStorage.getItem('cart');
-            const parsedCart = savedCart ? JSON.parse(savedCart) : { items: [] };
-            // Ensure the cart has the correct structure
-            return {
-                items: Array.isArray(parsedCart.items) ? parsedCart.items : []
-            };
+            return savedCart ? JSON.parse(savedCart) : [];
         } catch (error) {
-            console.error('Error loading cart:', error);
-            return { items: [] };
+            console.error('Error loading cart from localStorage:', error);
+            return [];
         }
     });
 
-    // Save cart to localStorage with error handling
     useEffect(() => {
         try {
-            localStorage.setItem('cart', JSON.stringify(cart));
+            localStorage.setItem('cart', JSON.stringify(cartItems));
         } catch (error) {
-            console.error('Error saving cart:', error);
+            console.error('Error saving cart to localStorage:', error);
         }
-    }, [cart]);
+    }, [cartItems]);
 
-    // Add an item to the cart
     const addToCart = (jersey) => {
-        if (!jersey || !jersey.id) {
-            console.error('Invalid jersey object:', jersey);
-            return;
-        }
-
-        setCart(prevCart => {
-            try {
-                const existingItem = prevCart.items.find(item => item.id === jersey.id);
-                if (existingItem) {
-                    return {
-                        items: prevCart.items.map(item =>
-                            item.id === jersey.id
-                                ? { ...item, quantity: (item.quantity || 1) + 1 }
-                                : item
-                        )
-                    };
-                }
-                return {
-                    items: [...prevCart.items, { ...jersey, quantity: 1 }]
-                };
-            } catch (error) {
-                console.error('Error adding to cart:', error);
-                return prevCart;
+        setCartItems(prevItems => {
+            // Ensure prevItems is an array
+            const items = Array.isArray(prevItems) ? prevItems : [];
+            const existingItem = items.find(item => item.id === jersey.id);
+            
+            if (existingItem) {
+                return items.map(item =>
+                    item.id === jersey.id
+                        ? { ...item, quantity: item.quantity + 1 }
+                        : item
+                );
             }
+            return [...items, { ...jersey, quantity: 1 }];
         });
     };
 
-    // Remove an item completely from the cart
     const removeFromCart = (jerseyId) => {
-        if (!jerseyId) return;
-
-        setCart(prevCart => ({
-            items: prevCart.items.filter(item => item.id !== jerseyId)
-        }));
-    };
-
-    // Decrease the quantity of an item
-    const decreaseQuantity = (jerseyId) => {
-        if (!jerseyId) return;
-
-        setCart(prevCart => {
-            const updatedItems = prevCart.items.map(item => {
-                if (item.id === jerseyId) {
-                    const newQuantity = Math.max(0, (item.quantity || 1) - 1);
-                    return {
-                        ...item,
-                        quantity: newQuantity
-                    };
-                }
-                return item;
-            }).filter(item => item.quantity > 0);
-
-            return { items: updatedItems };
+        setCartItems(prevItems => {
+            // Ensure prevItems is an array
+            const items = Array.isArray(prevItems) ? prevItems : [];
+            return items.filter(item => item.id !== jerseyId);
         });
     };
 
-    // Clear the entire cart
-    const clearCart = () => {
-        setCart({ items: [] });
+    const updateQuantity = (jerseyId, quantity) => {
+        if (quantity < 1) return;
+        setCartItems(prevItems => {
+            // Ensure prevItems is an array
+            const items = Array.isArray(prevItems) ? prevItems : [];
+            return items.map(item =>
+                item.id === jerseyId ? { ...item, quantity } : item
+            );
+        });
     };
 
-    // Provide a safe cart object
-    const safeCart = {
-        items: Array.isArray(cart.items) ? cart.items : [],
-        ...cart
+    const calculateTotal = () => {
+        if (!Array.isArray(cartItems)) return 0;
+        return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    };
+
+    const clearCart = () => {
+        setCartItems([]);
+        localStorage.removeItem('cart');
     };
 
     return (
-        <CartContext.Provider
-            value={{
-                cart: safeCart,
-                addToCart,
-                removeFromCart,
-                decreaseQuantity,
-                clearCart
-            }}
-        >
+        <CartContext.Provider value={{
+            cartItems,
+            addToCart,
+            removeFromCart,
+            updateQuantity,
+            calculateTotal,
+            clearCart
+        }}>
             {children}
         </CartContext.Provider>
     );

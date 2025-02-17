@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { CartContext } from '../context/CartContext';
 import {
     Card,
     CardContent,
@@ -9,12 +10,16 @@ import {
     IconButton,
     Button,
     CardActions,
+    Rating,
+    Tooltip,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import DeleteIcon from '@mui/icons-material/Delete';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 
-function JerseyCard({ jersey, onAddToCart, onAddToWishlist, isWishlisted, requiresAuth }) {
+function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist, isInWishlist, requiresAuth }) {
+    const { addToCart } = useContext(CartContext);
+
     // Add more comprehensive validation
     if (!jersey || typeof jersey !== 'object') { 
         console.warn('Invalid jersey data received:', jersey);
@@ -31,152 +36,175 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, isWishlisted, requir
     };
 
     const jerseyData = {
-        id: jersey.id ?? 0,
-        image: jersey.image ?? '/placeholder-jersey.jpeg',
-        price: typeof jersey.price === 'number' ? jersey.price : 0
+        id: jersey?.id ?? 0,
+        image: jersey?.image ?? '/placeholder.jpg',
+        price: typeof jersey?.price === 'number' ? jersey.price : 0
     };
 
-    const handleWishlistClick = () => {
-        onAddToWishlist(jersey); // Pass the entire jersey object
+    const handleWishlistAction = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!jersey?.id) {
+            console.error('Invalid jersey ID:', jersey);
+            return;
+        }
+
+        try {
+            if (isInWishlist) {
+                await onRemoveFromWishlist(jersey.id);
+            } else {
+                await onAddToWishlist(jersey.id);
+            }
+        } catch (error) {
+            console.error('Wishlist action failed:', error.response?.data || error.message);
+            // You might want to show an error message to the user here
+        }
     };
 
     return (
-        <Card sx={{ 
-            position: 'relative',
-            borderRadius: 2,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-            bgcolor: 'background.paper',
-            overflow: 'visible',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            width: '100%',
-            maxWidth: '100%',
-            transition: 'transform 0.2s ease-in-out',
-            '&:hover': {
-                transform: 'scale(1.05)'
-            }
-        }}>
+        <Card 
+            elevation={0}
+            sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid',
+                borderColor: 'divider',
+                position: 'relative',
+                width: '100%',
+                maxWidth: 345, // Consistent card width
+                transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: 3,
+                },
+            }}
+        >
+            {/* Wishlist Button */}
             <IconButton
-                onClick={handleWishlistClick}
+                onClick={handleWishlistAction}
                 sx={{
                     position: 'absolute',
-                    top: 16,
-                    right: 16,
+                    top: 8,
+                    right: 8,
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
                     zIndex: 2,
-                    bgcolor: 'white',
                     width: 40,
                     height: 40,
-                    padding: 1,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    '&:hover': { 
-                        bgcolor: 'white',
-                        transform: 'scale(1.1)',
+                    '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 1)',
                     },
-                    transition: 'transform 0.2s ease-in-out',
+                    boxShadow: 1,
                 }}
             >
-                {isWishlisted ? (
-                    <FavoriteIcon sx={{ color: 'red', fontSize: 20 }} />
+                {isInWishlist ? (
+                    <DeleteIcon color="error" sx={{ fontSize: 20 }} />
                 ) : (
-                    <FavoriteBorderIcon sx={{ color: 'rgba(0, 0, 0, 0.54)', fontSize: 20 }} />
+                    <FavoriteIcon 
+                        sx={{ 
+                            fontSize: 20,
+                            color: isInWishlist ? 'error.main' : 'action.active'
+                        }} 
+                    />
                 )}
             </IconButton>
 
-            <CardMedia
-                component="img"
-                height="220"
-                image={jerseyData.image}
-                alt={`${playerData.name} Jersey`}
-                sx={{
-                    objectFit: 'contain',
-                    bgcolor: '#f5f5f5',
-                    p: 2
-                }}
-            />
-
-            <CardContent sx={{ 
-                p: 2,
-                pt: 1,
-                flexGrow: 1,
-                display: 'flex',
-                flexDirection: 'column'
-            }}>
-                <Link 
-                    to={`/jersey/${jerseyData.id}`}
-                    style={{ textDecoration: 'none' }}
-                >
-                    <Typography
-                        variant="h6"
+            <Link 
+                to={`/jersey/${jerseyData.id}`}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+            >
+                <Box sx={{ position: 'relative', pt: '100%' }}>
+                    <CardMedia
+                        component="img"
+                        image={jerseyData.image}
+                        alt={`${playerData.name} Jersey`}
                         sx={{
-                            color: 'text.primary',
-                            fontWeight: 600,
-                            fontSize: '1.25rem',
-                            mb: 1
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                            p: 2,
                         }}
-                    >
-                        {playerData.name}
-                    </Typography>
-                </Link>
-                
-                <Typography
-                    variant="body1"
+                    />
+                </Box>
+            </Link>
+
+            <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+                <Typography 
+                    variant="h6" 
+                    component="div"
+                    sx={{ 
+                        fontWeight: 600,
+                        mb: 1,
+                        fontFamily: 'Poppins, sans-serif',
+                        fontSize: '1.1rem',
+                        height: '2.4em',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                    }}
+                >
+                    {playerData.name}
+                </Typography>
+                <Typography 
+                    variant="body2" 
                     color="text.secondary"
-                    sx={{ mb: 0.5 }}
+                    sx={{ mb: 1 }}
                 >
                     {playerData.team.name}
                 </Typography>
-                
-                <Typography
-                    variant="body2"
+                <Typography 
+                    variant="body2" 
                     color="text.secondary"
-                    sx={{ mb: 2 }}
+                    sx={{ mb: 1 }}
                 >
                     {playerData.team.league}
                 </Typography>
-
-                <Box sx={{ mt: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Button
-                        variant="outlined"
-                        component={Link}
-                        to={`/customize/${jerseyData.id}`}
-                        fullWidth
-                        sx={{
-                            borderRadius: 1,
-                            textTransform: 'none',
-                            fontSize: '1rem',
-                            py: 1
-                        }}
-                    >
-                        Customize Jersey
-                    </Button>
-
-                    <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                    }}>
-                        <Typography
-                            variant="h6"
-                            sx={{ 
-                                fontWeight: 700,
-                                fontSize: '1.25rem'
-                            }}
-                        >
-                            ${Number(jerseyData.price).toFixed(2)}
-                        </Typography>
-
-                        <Button
-                            variant="contained"
-                            fullWidth
-                            onClick={() => onAddToCart(jersey)}
-                            startIcon={<ShoppingCartIcon />}
-                        >
-                            {requiresAuth ? 'Login to Buy' : 'Add to Cart'}
-                        </Button>
-                    </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Rating 
+                        value={jersey.average_rating} 
+                        readOnly 
+                        precision={0.5}
+                        size="small"
+                    />
                 </Box>
+                <Typography 
+                    variant="h6" 
+                    color="primary"
+                    sx={{ 
+                        fontWeight: 600,
+                        fontFamily: 'Poppins, sans-serif',
+                    }}
+                >
+                    ${Number(jerseyData.price).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    })}
+                </Typography>
             </CardContent>
+
+            <CardActions sx={{ p: 2, pt: 0 }}>
+                <Button
+                    variant="contained"
+                    startIcon={<ShoppingCartIcon />}
+                    onClick={() => addToCart(jersey)}
+                    fullWidth
+                    sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontFamily: 'Poppins, sans-serif',
+                    }}
+                >
+                    {requiresAuth ? 'Login to Buy' : 'Add to Cart'}
+                </Button>
+            </CardActions>
         </Card>
     );
 }

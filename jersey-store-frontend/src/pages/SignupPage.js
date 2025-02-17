@@ -9,7 +9,11 @@ import {
     TextField,
     Button,
     Alert,
+    Card,
+    Grid,
+    Link,
 } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 
 function SignupPage() {
     const [username, setUsername] = useState('');
@@ -31,55 +35,114 @@ function SignupPage() {
     };
 
     return (
-        <Container maxWidth="sm" sx={{ mt: 8 }}>
-            <Typography variant="h4" gutterBottom>
-                Sign Up
-            </Typography>
-
-            {success && (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                    Signup successful! You can now log in.
-                </Alert>
-            )}
-
-            {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                    {error}
-                </Alert>
-            )}
-
+        <Container component="main" maxWidth="sm">
             <Box
-                component="form"
-                onSubmit={handleSignup}
-                sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}
+                sx={{
+                    minHeight: '80vh',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
             >
-                <TextField
-                    label="Username"
-                    variant="outlined"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                    fullWidth
-                />
-
-                <TextField
-                    label="Password"
-                    variant="outlined"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    fullWidth
-                />
-
-                <Button
-                    type="submit"
-                    variant="contained"
-                    color="primary"
-                    fullWidth
+                <Card
+                    elevation={0}
+                    sx={{
+                        p: 4,
+                        width: '100%',
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                    }}
                 >
-                    Sign Up
-                </Button>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <Typography 
+                            component="h1" 
+                            variant="h4"
+                            sx={{
+                                fontFamily: 'Poppins, sans-serif',
+                                fontWeight: 600,
+                                mb: 4,
+                            }}
+                        >
+                            Sign Up
+                        </Typography>
+                        <Box component="form" onSubmit={handleSignup} sx={{ mt: 1, width: '100%' }}>
+                            <TextField
+                                margin="normal"
+                                required
+                                fullWidth
+                                id="username"
+                                label="Username"
+                                name="username"
+                                autoComplete="username"
+                                autoFocus
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: 2,
+                                        backgroundColor: 'white',
+                                    }
+                                }}
+                            />
+                            <TextField
+                                margin="normal"
+                                required
+                                fullWidth
+                                name="password"
+                                label="Password"
+                                type="password"
+                                id="password"
+                                autoComplete="new-password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: 2,
+                                        backgroundColor: 'white',
+                                    }
+                                }}
+                            />
+                            <Button
+                                type="submit"
+                                fullWidth
+                                variant="contained"
+                                sx={{ 
+                                    mt: 3, 
+                                    mb: 2,
+                                    py: 1.5,
+                                    fontSize: '1.1rem',
+                                }}
+                            >
+                                Sign Up
+                            </Button>
+                            <Grid container justifyContent="flex-end">
+                                <Grid item>
+                                    <Link 
+                                        component={RouterLink} 
+                                        to="/login"
+                                        sx={{
+                                            color: 'primary.main',
+                                            textDecoration: 'none',
+                                            '&:hover': {
+                                                textDecoration: 'underline',
+                                            }
+                                        }}
+                                    >
+                                        Already have an account? Sign In
+                                    </Link>
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    </Box>
+                </Card>
             </Box>
         </Container>
     );

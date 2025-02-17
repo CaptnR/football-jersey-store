@@ -5,31 +5,78 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
     Container,
+    Box,
     Typography,
     Grid,
     Card,
-    CardContent,
-    Table,
-    TableHead,
-    TableBody,
-    TableRow,
-    TableCell,
-    Select,
-    MenuItem,
-    Alert,
     CircularProgress,
+    Alert,
     Divider,
 } from '@mui/material';
+import {
+    TrendingUp,
+    ShoppingCart,
+    LocalShipping,
+    CheckCircle,
+    Cancel,
+    AttachMoney,
+} from '@mui/icons-material';
+
+function StatCard({ title, value, icon, color }) {
+    return (
+        <Card
+            elevation={0}
+            sx={{
+                p: 3,
+                height: '100%',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid',
+                borderColor: 'divider',
+                transition: 'transform 0.2s ease-in-out',
+                '&:hover': {
+                    transform: 'translateY(-4px)',
+                },
+            }}
+        >
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box
+                    sx={{
+                        backgroundColor: `${color}.light`,
+                        borderRadius: 2,
+                        p: 1,
+                        mr: 2,
+                    }}
+                >
+                    {icon}
+                </Box>
+                <Typography
+                    variant="h6"
+                    sx={{
+                        fontFamily: 'Poppins, sans-serif',
+                        fontWeight: 600,
+                    }}
+                >
+                    {title}
+                </Typography>
+            </Box>
+            <Typography
+                variant="h4"
+                sx={{
+                    fontFamily: 'Poppins, sans-serif',
+                    fontWeight: 700,
+                    color: `${color}.main`,
+                }}
+            >
+                {value}
+            </Typography>
+        </Card>
+    );
+}
 
 function AdminDashboardPage() {
     const navigate = useNavigate();
-    const [metrics, setMetrics] = useState({
-        total_sales: 0,
-        total_users: 0,
-        total_orders: 0,
-        pending_orders: 0,
-    });
-    const [orders, setOrders] = useState([]);
+    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -50,15 +97,7 @@ function AdminDashboardPage() {
                         Authorization: `Token ${token}`, // Include token in Authorization header
                     },
                 });
-                setMetrics(metricsResponse.data);
-
-                // Fetch orders
-                const ordersResponse = await axios.get('http://127.0.0.1:8000/api/admin/orders/', {
-                    headers: {
-                        Authorization: `Token ${token}`, // Include token in Authorization header
-                    },
-                });
-                setOrders(ordersResponse.data);
+                setStats(metricsResponse.data);
             } catch (err) {
                 console.error('Error fetching admin data:', err.response || err.message);
                 setError('Failed to load admin dashboard data.');
@@ -70,104 +109,137 @@ function AdminDashboardPage() {
         fetchDashboardData();
     }, [navigate]);
 
-    const updateOrderStatus = async (orderId, status) => {
-        const token = localStorage.getItem('token');
-        try {
-            await axios.patch(`http://127.0.0.1:8000/api/admin/orders/${orderId}/`, { status }, {
-                headers: {
-                    Authorization: `Token ${token}`, // Include token in Authorization header
-                },
-            });
-            setOrders((prevOrders) =>
-                prevOrders.map((order) =>
-                    order.id === orderId ? { ...order, status } : order
-                )
-            );
-        } catch (err) {
-            console.error('Error updating order status:', err.response || err.message);
-        }
-    };
-
     if (loading) {
         return (
-            <Container maxWidth="md" sx={{ mt: 4, textAlign: 'center' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
                 <CircularProgress />
-            </Container>
+            </Box>
         );
     }
 
     return (
-        <Container maxWidth="lg" sx={{ mt: 4 }}>
-            <Typography variant="h4" gutterBottom>
-                Admin Dashboard
-            </Typography>
+        <Container maxWidth="lg">
+            <Box sx={{ py: 6 }}>
+                <Typography 
+                    variant="h4" 
+                    sx={{
+                        fontFamily: 'Poppins, sans-serif',
+                        fontWeight: 600,
+                        mb: 4,
+                    }}
+                >
+                    Admin Dashboard
+                </Typography>
 
-            {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                    {error}
-                </Alert>
-            )}
+                {error && (
+                    <Alert severity="error" sx={{ mb: 4 }}>
+                        {error}
+                    </Alert>
+                )}
 
-            {/* Metrics Section */}
-            <Grid container spacing={4} sx={{ mb: 4 }}>
-                {Object.entries(metrics).map(([key, value]) => (
-                    <Grid item xs={12} sm={6} md={3} key={key}>
-                        <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
-                            <CardContent>
-                                <Typography variant="h6" gutterBottom>
-                                    {key.replace('_', ' ').toUpperCase()}
-                                </Typography>
-                                <Typography variant="h5">
-                                    {key === 'total_sales' ? `$${value.toFixed(2)}` : value}
-                                </Typography>
-                            </CardContent>
-                        </Card>
+                <Grid container spacing={3}>
+                    <Grid item xs={12} sm={6} md={4}>
+                        <StatCard
+                            title="Total Revenue"
+                            value={`$${stats?.totalRevenue.toLocaleString()}`}
+                            icon={<AttachMoney sx={{ color: 'success.main' }} />}
+                            color="success"
+                        />
                     </Grid>
-                ))}
-            </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                        <StatCard
+                            title="Total Orders"
+                            value={stats?.totalOrders}
+                            icon={<ShoppingCart sx={{ color: 'primary.main' }} />}
+                            color="primary"
+                        />
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                        <StatCard
+                            title="Average Order Value"
+                            value={`$${stats?.averageOrderValue.toFixed(2)}`}
+                            icon={<TrendingUp sx={{ color: 'info.main' }} />}
+                            color="info"
+                        />
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                        <StatCard
+                            title="Pending Orders"
+                            value={stats?.pendingOrders}
+                            icon={<LocalShipping sx={{ color: 'warning.main' }} />}
+                            color="warning"
+                        />
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                        <StatCard
+                            title="Delivered Orders"
+                            value={stats?.deliveredOrders}
+                            icon={<CheckCircle sx={{ color: 'success.main' }} />}
+                            color="success"
+                        />
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                        <StatCard
+                            title="Cancelled Orders"
+                            value={stats?.cancelledOrders}
+                            icon={<Cancel sx={{ color: 'error.main' }} />}
+                            color="error"
+                        />
+                    </Grid>
+                </Grid>
 
-            {/* Orders Section */}
-            <Typography variant="h5" gutterBottom>
-                Manage Orders
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            {orders.length === 0 ? (
-                <Alert severity="info">No orders available.</Alert>
-            ) : (
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Order ID</TableCell>
-                            <TableCell>User</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Total Price</TableCell>
-                            <TableCell>Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {orders.map((order) => (
-                            <TableRow key={order.id}>
-                                <TableCell>{order.id}</TableCell>
-                                <TableCell>{order.user}</TableCell>
-                                <TableCell>{order.status}</TableCell>
-                                <TableCell>${order.total_price}</TableCell>
-                                <TableCell>
-                                    <Select
-                                        value={order.status}
-                                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                                        sx={{ width: '150px' }}
-                                    >
-                                        <MenuItem value="Pending">Pending</MenuItem>
-                                        <MenuItem value="Shipped">Shipped</MenuItem>
-                                        <MenuItem value="Delivered">Delivered</MenuItem>
-                                        <MenuItem value="Cancelled">Cancelled</MenuItem>
-                                    </Select>
-                                </TableCell>
-                            </TableRow>
+                <Box sx={{ mt: 4 }}>
+                    <Typography
+                        variant="h5"
+                        sx={{
+                            fontFamily: 'Poppins, sans-serif',
+                            fontWeight: 600,
+                            mb: 3,
+                        }}
+                    >
+                        Recent Activity
+                    </Typography>
+                    <Card
+                        elevation={0}
+                        sx={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                            backdropFilter: 'blur(8px)',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                        }}
+                    >
+                        {stats?.recentOrders.map((order, index) => (
+                            <React.Fragment key={order.id}>
+                                <Box sx={{ p: 3 }}>
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={12} sm={4}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                                Order #{order.id}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {new Date(order.created_at).toLocaleDateString()}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={12} sm={4}>
+                                            <Typography variant="body1">
+                                                Customer: {order.user}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={12} sm={4}>
+                                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                                ${order.total_price}
+                                            </Typography>
+                                        </Grid>
+                                    </Grid>
+                                </Box>
+                                {index < stats.recentOrders.length - 1 && (
+                                    <Divider />
+                                )}
+                            </React.Fragment>
                         ))}
-                    </TableBody>
-                </Table>
-            )}
+                    </Card>
+                </Box>
+            </Box>
         </Container>
     );
 }

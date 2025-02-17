@@ -14,6 +14,13 @@ import UserOrdersPage from './pages/UserOrdersPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import WishlistPage from './pages/WishlistPage';
+import { CartProvider } from './context/CartContext';
+import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider } from '@mui/material/styles';
+import { theme } from './theme/theme';
+import { Box } from '@mui/material';
+import ErrorBoundary from './components/ErrorBoundary';
+import TestErrorComponent from './components/TestErrorComponent';
 
 function PrivateRoute({ children }) {
     const isAuthenticated = !!localStorage.getItem('token');
@@ -27,41 +34,62 @@ function PrivateRoute({ children }) {
 }
 
 function App() {
-    const isAdmin = localStorage.getItem('isAdmin') === 'true';
-
     return (
-        <>
-            <Navbar />
-            <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                
-                {/* Protected Routes */}
-                <Route path="/dashboard" element={
-                    <PrivateRoute>
-                        <DashboardPage />
-                    </PrivateRoute>
-                } />
-                <Route path="/cart" element={
-                    <PrivateRoute>
-                        <CartPage />
-                    </PrivateRoute>
-                } />
-                <Route path="/checkout" element={
-                    <PrivateRoute>
-                        <CheckoutPage />
-                    </PrivateRoute>
-                } />
-                <Route path="/jersey/:id" element={<JerseyDetails />} />
-                <Route path="/customize" element={<CustomizationPage />} />
-                <Route path="/orders" element={<UserOrdersPage />} />
-                <Route path="/admin/orders" element={isAdmin ? <AdminOrdersPage /> : <Navigate to="/login" />} />
-                <Route path="/admin/dashboard" element={isAdmin ? <AdminDashboardPage /> : <Navigate to="/login" />} />
-                <Route path="/wishlist" element={<WishlistPage />} />
-            </Routes>
-            <Footer />
-        </>
+        <ErrorBoundary>
+            <ThemeProvider theme={theme}>
+                <ToastProvider>
+                    <CartProvider>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+                            <Navbar />
+                            <Box component="main" sx={{ flex: 1, width: '100%' }}>
+                                <Routes>
+                                    <Route path="/" element={<HomePage />} />
+                                    <Route path="/login" element={<LoginPage />} />
+                                    <Route path="/signup" element={<SignupPage />} />
+                                    <Route path="/jersey/:id" element={<JerseyDetails />} />
+                                    <Route path="/customize" element={<CustomizationPage />} />
+                                    <Route path="/wishlist" element={<WishlistPage />} />
+                                    <Route path="/test-error" element={<TestErrorComponent />} />
+                                    
+                                    {/* Protected Routes */}
+                                    <Route path="/dashboard" element={
+                                        <PrivateRoute>
+                                            <DashboardPage />
+                                        </PrivateRoute>
+                                    } />
+                                    <Route path="/cart" element={
+                                        <PrivateRoute>
+                                            <CartPage />
+                                        </PrivateRoute>
+                                    } />
+                                    <Route path="/checkout" element={
+                                        <PrivateRoute>
+                                            <CheckoutPage />
+                                        </PrivateRoute>
+                                    } />
+                                    <Route path="/orders" element={
+                                        <PrivateRoute>
+                                            <UserOrdersPage />
+                                        </PrivateRoute>
+                                    } />
+                                    <Route path="/admin/orders" element={
+                                        <PrivateRoute>
+                                            <AdminOrdersPage />
+                                        </PrivateRoute>
+                                    } />
+                                    <Route path="/admin/dashboard" element={
+                                        <PrivateRoute>
+                                            <AdminDashboardPage />
+                                        </PrivateRoute>
+                                    } />
+                                </Routes>
+                            </Box>
+                            <Footer />
+                        </Box>
+                    </CartProvider>
+                </ToastProvider>
+            </ThemeProvider>
+        </ErrorBoundary>
     );
 }
 

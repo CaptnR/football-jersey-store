@@ -7,7 +7,7 @@ from rest_framework.viewsets import ModelViewSet
 from .models import Team, Player, Jersey, Customization, Order, Payment, Wishlist, Review
 from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer, ReviewSerializer
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from django.contrib.auth.models import User
 from django.db import models
 from .serializers import JerseySerializer
@@ -18,6 +18,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework import serializers
 from django.http import Http404
+from contextlib import suppress
+from django.core.cache import cache
+from django.db.models import Prefetch
+from django.db.models import Count, Avg
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow public access
@@ -63,38 +67,18 @@ class JerseyViewSet(viewsets.ModelViewSet):
     filter_backends = [SearchFilter, DjangoFilterBackend]
     search_fields = ['player__name', 'player__team__name', 'player__team__league']
     filterset_fields = ['player__team__league', 'player__team__name']
-    
+
     def get_queryset(self):
-        queryset = Jersey.objects.select_related('player', 'player__team').all()
-        
-        # Handle search
-        search_query = self.request.query_params.get('search', None)
-        if search_query:
-            queryset = queryset.filter(
-                models.Q(player__name__icontains=search_query) |
-                models.Q(player__team__name__icontains=search_query) |
-                models.Q(player__team__league__icontains=search_query)
-            )
-        
-        # Handle price range filter
-        min_price = self.request.query_params.get('min_price')
-        max_price = self.request.query_params.get('max_price')
-        
-        if min_price:
-            try:
-                min_price = float(min_price)
-                queryset = queryset.filter(price__gte=min_price)
-            except (TypeError, ValueError):
-                pass
-                
-        if max_price:
-            try:
-                max_price = float(max_price)
-                queryset = queryset.filter(price__lte=max_price)
-            except (TypeError, ValueError):
-                pass
-            
-        return queryset
+        return Jersey.objects.select_related(
+            'player', 
+            'player__team'
+        ).prefetch_related(
+            'reviews',
+            'wishlist_items'
+        ).annotate(
+            review_count=Count('reviews'),
+            avg_rating=Avg('reviews__rating')
+        )
     
     def retrieve(self, request, *args, **kwargs):
         try:
@@ -107,6 +91,11 @@ class JerseyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 class CustomizationViewSet(ModelViewSet):
     queryset = Customization.objects.all()
     serializer_class = CustomizationSerializer
@@ -118,15 +107,31 @@ class CheckoutView(APIView):
     def post(self, request):
         try:
             user = request.user
-            cart_items = request.data.get('cart_items', {}).get('items', [])
+            cart_items = request.data.get('items', [])  # Changed to match frontend data structure
             total_price = request.data.get('total_price', 0.0)
             payment_data = request.data.get('payment', {})
+
+            # Validate required data
+            if not cart_items:
+                return Response(
+                    {"error": "Cart items are required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Format cart items to include necessary information
+            formatted_items = [{
+                'jersey_id': item['id'],
+                'quantity': item['quantity'],
+                'price': item['price'],
+                'player_name': item['player']['name']
+            } for item in cart_items]
 
             # Create an order with cart items
             order = Order.objects.create(
                 user=user,
                 total_price=total_price,
-                items=cart_items  # Save cart items in the order
+                items=formatted_items,
+                status='processing'
             )
 
             # Create a payment linked to the order
@@ -137,12 +142,16 @@ class CheckoutView(APIView):
                 expiration_date=payment_data.get('expiration_date'),
             )
 
+            # Clear the cart after successful order
+            cache.delete(f'cart_{user.id}')
+
             return Response({
                 "message": "Order placed successfully!",
                 "order_id": order.id
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
+            print(f"Checkout Error: {str(e)}")  # Add logging
             return Response({
                 "error": str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
@@ -221,60 +230,69 @@ class WishlistView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """Add a jersey to the user's wishlist."""
-        jersey_id = request.data.get('jersey_id')
-        if not jersey_id:
-            return Response({'error': 'Jersey ID is required'}, status=400)
-
         try:
-            Wishlist.objects.create(user=request.user, jersey_id=jersey_id)
-            return Response({'message': 'Jersey added to wishlist'}, status=201)
-        except Exception as e:
-            return Response({'error': str(e)}, status=400)
-
-    def delete(self, request):
-        try:
-            jersey_id = request.data.get('jersey_id')
-            print(f"Received delete request for jersey_id: {jersey_id}, type: {type(jersey_id)}")
+            jersey_id = request.data.get('jersey')
+            print(f"Received wishlist request with data: {request.data}")  # Debug log
             
-            if jersey_id is None:
+            if not jersey_id:
                 return Response(
-                    {'error': 'jersey_id is required'}, 
+                    {'error': 'Jersey ID is required'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
+            # Verify jersey exists
             try:
-                jersey_id = int(jersey_id)
-            except (TypeError, ValueError) as e:
-                print(f"Error converting jersey_id: {e}")
+                jersey = Jersey.objects.get(id=jersey_id)
+            except Jersey.DoesNotExist:
                 return Response(
-                    {'error': f'Invalid jersey_id format: {jersey_id}'}, 
-                    status=status.HTTP_400_BAD_REQUEST
+                    {'error': f'Jersey with id {jersey_id} does not exist'},
+                    status=status.HTTP_404_NOT_FOUND
                 )
-                
-            # Check if the wishlist item exists
+            
+            # Check if already in wishlist
+            wishlist_item, created = Wishlist.objects.get_or_create(
+                user=request.user,
+                jersey=jersey
+            )
+            
+            return Response(
+                {
+                    'message': 'Added to wishlist successfully',
+                    'created': created
+                },
+                status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            )
+        except Exception as e:
+            print(f"Wishlist error: {str(e)}")  # Debug log
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def delete(self, request, jersey_id):
+        try:
             wishlist_item = Wishlist.objects.filter(
                 user=request.user,
                 jersey_id=jersey_id
             ).first()
             
             if not wishlist_item:
-                print(f"No wishlist item found for user {request.user.id} and jersey {jersey_id}")
                 return Response(
-                    {'error': 'Item not found in wishlist'}, 
+                    {'error': 'Item not found in wishlist'},
                     status=status.HTTP_404_NOT_FOUND
                 )
-                
-            wishlist_item.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
             
-        except Exception as e:
-            print(f"Exception in delete: {str(e)}")
+            wishlist_item.delete()
             return Response(
-                {'error': str(e)}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {'message': 'Removed from wishlist successfully'},
+                status=status.HTTP_200_OK
             )
-        
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 class FilterMetadataView(APIView):
     permission_classes = [AllowAny]  # Allow public access
     
@@ -379,23 +397,104 @@ def dashboard_view(request):
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
-        jersey_id = self.kwargs['jersey_id']
-        return Review.objects.filter(jersey_id=jersey_id).order_by('-created_at')
+        jersey_id = self.kwargs.get('jersey_id')
+        queryset = Review.objects.filter(jersey_id=jersey_id).order_by('-created_at')
         
-    def perform_create(self, serializer):
-        jersey_id = self.kwargs['jersey_id']
-        jersey = Jersey.objects.get(id=jersey_id)
+        # Add a flag to identify the user's own review
+        if self.request.user.is_authenticated:
+            for review in queryset:
+                review.is_users_review = (review.user == self.request.user)
         
-        # Check if user already reviewed this jersey
-        if Review.objects.filter(user=self.request.user, jersey=jersey).exists():
-            raise serializers.ValidationError('You have already reviewed this jersey')
-            
-        serializer.save(
-            user=self.request.user,
-            jersey=jersey
+        return queryset
+
+    def update(self, request, *args, **kwargs):
+        review = self.get_object()
+        
+        # Check if the user owns this review
+        if review.user != request.user:
+            return Response(
+                {"error": "You can only edit your own reviews"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = self.get_serializer(review, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # Update jersey's average rating
+        jersey = review.jersey
+        avg_rating = Review.objects.filter(jersey=jersey).aggregate(models.Avg('rating'))['rating__avg']
+        jersey.average_rating = avg_rating
+        jersey.save()
+
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        jersey_id = self.kwargs.get('jersey_id')
+        try:
+            jersey = Jersey.objects.get(id=jersey_id)
+        except Jersey.DoesNotExist:
+            return Response(
+                {"error": "Jersey not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if user has purchased the jersey
+        orders = Order.objects.filter(
+            user=request.user,
+            status__in=['processing', 'delivered']  # Include both processing and delivered orders
         )
+
+        has_purchased = False
+        for order in orders:
+            try:
+                items = order.items if isinstance(order.items, list) else []
+                for item in items:
+                    if isinstance(item, dict) and str(item.get('jersey_id', '')) == str(jersey_id):
+                        has_purchased = True
+                        break
+                if has_purchased:
+                    break
+            except Exception as e:
+                print(f"Error checking order items: {e}")
+                continue
+
+        if not has_purchased:
+            return Response(
+                {"error": "You can only review jerseys you have purchased"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Check if user already reviewed this jersey
+        existing_review = Review.objects.filter(user=request.user, jersey=jersey).first()
+        if existing_review:
+            return Response(
+                {"error": "You have already reviewed this jersey"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Create the review
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(user=request.user, jersey=jersey)
+            
+            # Update jersey's average rating
+            jersey_reviews = Review.objects.filter(jersey=jersey)
+            avg_rating = jersey_reviews.aggregate(models.Avg('rating'))['rating__avg']
+            jersey.average_rating = avg_rating
+            jersey.save()
+            
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"Error creating review: {e}")
+            return Response(
+                {"error": "Failed to create review"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class OrderStatusView(APIView):
     permission_classes = [IsAuthenticated]
@@ -461,3 +560,20 @@ def filter_metadata(request):
         'leagues': list(leagues),
         'teams': list(teams)
     })
+
+class OrderViewSet(viewsets.ModelViewSet):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user).order_by('-created_at')
+
+    @action(detail=False, methods=['get'])
+    def my_orders(self, request):
+        orders = self.get_queryset().order_by('-created_at')
+        serializer = self.get_serializer(orders, many=True)
+        return Response(serializer.data)
+
+    def list(self, request, *args, **kwargs):
+        # Redirect list to my_orders for regular users
+        return self.my_orders(request)

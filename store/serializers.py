@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Team, Player, Jersey, Customization, Order, Payment, Review
+from django.db import models
 
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,15 +19,40 @@ class JerseySerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
     team_name = serializers.CharField(source='player.team.name', read_only=True)
     league = serializers.CharField(source='player.team.league', read_only=True)
+    average_rating = serializers.SerializerMethodField()
+    user_has_purchased = serializers.SerializerMethodField()
     
     class Meta:
         model = Jersey
-        fields = ['id', 'player', 'price', 'image', 'team_name', 'league']
+        fields = ['id', 'player', 'price', 'image', 'team_name', 'league', 'average_rating', 'user_has_purchased']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['price'] = float(instance.price)
         return representation
+
+    def get_average_rating(self, obj):
+        try:
+            return Review.objects.filter(jersey=obj).aggregate(
+                avg_rating=models.Avg('rating')
+            )['avg_rating'] or 0
+        except Exception as e:
+            print(f"Error calculating average rating: {e}")
+            return 0
+
+    def get_user_has_purchased(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            try:
+                return Order.objects.filter(
+                    user=request.user,
+                    status='delivered',
+                    items__contains=[{'jersey_id': obj.id}]  # Check in the JSON field
+                ).exists()
+            except Exception as e:
+                print(f"Error checking purchase status: {e}")
+                return False
+        return False
 
 class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:
