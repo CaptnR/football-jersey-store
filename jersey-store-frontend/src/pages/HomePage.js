@@ -26,6 +26,8 @@ import SearchFilterBar from '../components/SearchFilterBar';
 import Spinner from '../components/Spinner';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import LoadingOverlay from '../components/LoadingOverlay';
+import CreateIcon from '@mui/icons-material/Create';
+import { Link } from 'react-router-dom';
 
 function HomePage() {
     const navigate = useNavigate();
@@ -207,171 +209,181 @@ function HomePage() {
     };
 
     return (
-        <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh', pt: 4, pb: 8 }}>
+        <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh' }}>
             <Container maxWidth="xl">
-                <LoadingOverlay loading={loading}>
-                    <Box sx={{ py: 4 }}>
-                        {/* Hero Section */}
-                        <Box sx={{ mb: 6, textAlign: 'center' }}>
-                            <Typography 
-                                variant="h3" 
-                                component="h1" 
-                                sx={{ 
-                                    fontWeight: 700,
-                                    mb: 2,
-                                    background: 'linear-gradient(45deg, #1a237e, #0d47a1)',
-                                    backgroundClip: 'text',
-                                    WebkitBackgroundClip: 'text',
-                                    color: 'transparent',
-                                }}
-                            >
-                                Football Jersey Store
-                            </Typography>
-                            <Typography 
-                                variant="h6" 
-                                color="text.secondary"
-                                sx={{ maxWidth: 600, mx: 'auto', mb: 4 }}
-                            >
-                                Find authentic jerseys from your favorite teams and players
-                            </Typography>
-                            
-                            {!isAuthenticated && (
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={() => navigate('/login')}
-                                    sx={{ mt: 2 }}
-                                >
-                                    Login to Shop
-                                </Button>
-                            )}
-                        </Box>
+                {/* Hero Section */}
+                <Box 
+                    sx={{ 
+                        textAlign: 'center',
+                        bgcolor: '#1976d2',
+                        color: 'white',
+                        borderRadius: '16px',
+                        mt: 4,
+                        p: 4,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'linear-gradient(45deg, rgba(25, 118, 210, 0.95), rgba(25, 118, 210, 0.8))',
+                            zIndex: 1
+                        }
+                    }}
+                >
+                    <Box sx={{ position: 'relative', zIndex: 2 }}>
+                        <Typography 
+                            variant="h3" 
+                            component="h1"
+                            sx={{ 
+                                fontWeight: 700,
+                                color: 'white',
+                                mb: 2,
+                                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
+                            }}
+                        >
+                            Football Jersey Store
+                        </Typography>
+                        <Typography 
+                            variant="h6"
+                            sx={{ 
+                                mb: 4,
+                                opacity: 0.9,
+                                fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' }
+                            }}
+                        >
+                            Find authentic jerseys from your favorite teams and players
+                        </Typography>
 
-                        {/* Search and Filter */}
-                        <Box sx={{ mb: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Search jerseys"
-                                variant="outlined"
-                                value={searchQuery}
-                                onChange={handleSearch}
-                                sx={{ mb: 2 }}
-                            />
-                            
-                            <Button
-                                startIcon={<FilterListIcon />}
-                                onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                                sx={{ mb: 2 }}
-                            >
-                                Filters
-                            </Button>
-
-                            {isFilterExpanded && (
-                                <Box sx={{ p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                                    <Grid container spacing={2}>
-                                        <Grid item xs={12} md={4}>
-                                            <FormControl fullWidth>
-                                                <InputLabel>League</InputLabel>
-                                                <Select
-                                                    value={filters.league}
-                                                    onChange={(e) => handleFilterChange('league', e.target.value)}
-                                                >
-                                                    <MenuItem value="">All Leagues</MenuItem>
-                                                    {leagues.map(league => (
-                                                        <MenuItem key={league} value={league}>{league}</MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-                                        </Grid>
-                                        <Grid item xs={12} md={4}>
-                                            <FormControl fullWidth>
-                                                <InputLabel>Team</InputLabel>
-                                                <Select
-                                                    value={filters.team}
-                                                    onChange={(e) => handleFilterChange('team', e.target.value)}
-                                                >
-                                                    <MenuItem value="">All Teams</MenuItem>
-                                                    {teams.map(team => (
-                                                        <MenuItem key={team} value={team}>{team}</MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-                                        </Grid>
-                                        <Grid item xs={12}>
-                                            <Typography gutterBottom>Price Range</Typography>
-                                            <Slider
-                                                value={filters.priceRange}
-                                                onChange={(e, newValue) => handleFilterChange('priceRange', newValue)}
-                                                valueLabelDisplay="auto"
-                                                min={0}
-                                                max={1000}
-                                            />
-                                        </Grid>
-                                    </Grid>
-                                </Box>
-                            )}
-                        </Box>
-
-                        {/* Loading and Error States */}
-                        {loading && (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                                <Spinner />
-                            </Box>
-                        )}
-                        
-                        {error && (
-                            <Alert severity="error" sx={{ mb: 4 }}>
-                                {error}
-                            </Alert>
-                        )}
-
-                        {/* Jersey Grid */}
-                        {!loading && !error && (
-                            <>
-                                {jerseys.length > 0 ? (
-                                    <Grid 
-                                        container 
-                                        spacing={2}
-                                        sx={{
-                                            px: 2,
-                                            '& .MuiGrid-item': {
-                                                display: 'flex',
-                                                width: '20%'
-                                            }
-                                        }}
-                                    >
-                                        {jerseys.map((jersey) => (
-                                            <Grid item xs={12} sm={6} md={2.4} key={jersey.id}>
-                                                <JerseyCard
-                                                    jersey={jersey}
-                                                    onAddToCart={handleAddToCart}
-                                                    onAddToWishlist={handleAddToWishlist}
-                                                    onRemoveFromWishlist={handleRemoveFromWishlist}
-                                                    isInWishlist={jersey.isInWishlist}
-                                                    requiresAuth={!isAuthenticated}
-                                                />
-                                            </Grid>
-                                        ))}
-                                    </Grid>
-                                ) : (
-                                    <Box 
-                                        sx={{ 
-                                            textAlign: 'center',
-                                            py: 8,
-                                            color: 'text.secondary'
-                                        }}
-                                    >
-                                        <Typography variant="h6">
-                                            No jerseys found
-                                        </Typography>
-                                        <Typography variant="body1">
-                                            Try adjusting your search or filters
-                                        </Typography>
-                                    </Box>
-                                )}
-                            </>
-                        )}
+                        <Button
+                            component={Link}
+                            to="/customize"
+                            variant="contained"
+                            startIcon={<CreateIcon />}
+                            sx={{
+                                bgcolor: 'white',
+                                color: '#1976d2',
+                                px: 4,
+                                py: 1.5,
+                                '&:hover': {
+                                    bgcolor: 'rgba(255, 255, 255, 0.9)',
+                                },
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                fontSize: '1.1rem'
+                            }}
+                        >
+                            Create Custom Jersey
+                        </Button>
                     </Box>
+                </Box>
+
+                {/* Search Bar */}
+                <Box sx={{ mt: 6, mb: 2 }}>
+                    <TextField
+                        fullWidth
+                        placeholder="Search jerseys"
+                        variant="outlined"
+                        value={searchQuery}
+                        onChange={handleSearch}
+                        sx={{
+                            bgcolor: 'white',
+                            borderRadius: 1,
+                            '& .MuiOutlinedInput-root': {
+                                '& fieldset': {
+                                    borderColor: 'transparent',
+                                },
+                                '&:hover fieldset': {
+                                    borderColor: 'transparent',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: 'primary.main',
+                                },
+                            },
+                        }}
+                    />
+                </Box>
+
+                {/* Filters Button */}
+                <Box sx={{ mb: 4 }}>
+                    <Button
+                        startIcon={<FilterListIcon />}
+                        onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                        sx={{ 
+                            color: 'text.secondary',
+                            borderColor: 'divider'
+                        }}
+                        variant="outlined"
+                    >
+                        Filters
+                    </Button>
+                </Box>
+
+                {/* Filter Panel */}
+                {isFilterExpanded && (
+                    <Box sx={{ p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} md={4}>
+                                <FormControl fullWidth>
+                                    <InputLabel>League</InputLabel>
+                                    <Select
+                                        value={filters.league}
+                                        onChange={(e) => handleFilterChange('league', e.target.value)}
+                                    >
+                                        <MenuItem value="">All Leagues</MenuItem>
+                                        {leagues.map(league => (
+                                            <MenuItem key={league} value={league}>{league}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Team</InputLabel>
+                                    <Select
+                                        value={filters.team}
+                                        onChange={(e) => handleFilterChange('team', e.target.value)}
+                                    >
+                                        <MenuItem value="">All Teams</MenuItem>
+                                        {teams.map(team => (
+                                            <MenuItem key={team} value={team}>{team}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Typography gutterBottom>Price Range</Typography>
+                                <Slider
+                                    value={filters.priceRange}
+                                    onChange={(e, newValue) => handleFilterChange('priceRange', newValue)}
+                                    valueLabelDisplay="auto"
+                                    min={0}
+                                    max={1000}
+                                />
+                            </Grid>
+                        </Grid>
+                    </Box>
+                )}
+
+                {/* Jersey Grid */}
+                <LoadingOverlay loading={loading}>
+                    <Grid container spacing={3}>
+                        {jerseys.map((jersey) => (
+                            <Grid item xs={12} sm={6} md={4} lg={3} key={jersey.id}>
+                                <JerseyCard
+                                    jersey={jersey}
+                                    onAddToCart={handleAddToCart}
+                                    onAddToWishlist={handleAddToWishlist}
+                                    onRemoveFromWishlist={handleRemoveFromWishlist}
+                                    isInWishlist={jersey.isInWishlist}
+                                    requiresAuth={!isAuthenticated}
+                                />
+                            </Grid>
+                        ))}
+                    </Grid>
                 </LoadingOverlay>
             </Container>
         </Box>

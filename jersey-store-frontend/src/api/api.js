@@ -1,13 +1,17 @@
 import axios from 'axios';
+import { useToast } from '../context/ToastContext'; // If you have a toast context
+
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
 
 export const API = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api',
+    baseURL: BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
+    timeout: 5000, // Add timeout
 });
 
-// Add a request interceptor to include the token
+// Add request interceptor
 API.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -17,15 +21,19 @@ API.interceptors.request.use(
         return config;
     },
     (error) => {
+        console.error('Request error:', error);
         return Promise.reject(error);
     }
 );
 
-// Add response interceptor to handle unauthorized access
+// Add response interceptor
 API.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        if (error.code === 'ERR_NETWORK') {
+            console.error('Network error - Is the backend server running?');
+            // You can show a toast message here
+        } else if (error.response?.status === 401) {
             localStorage.removeItem('token');
             window.location.href = '/login';
         }
@@ -33,24 +41,111 @@ API.interceptors.response.use(
     }
 );
 
-// Keep all the existing API functions
-export const loginUser = (data) => API.post('/login/', data);
-export const signupUser = (data) => API.post('/signup/', data);
-export const fetchJerseys = () => API.get('/jerseys/');
-export const fetchTeams = () => API.get('/teams/');
-export const fetchPlayers = () => API.get('/players/');
-export const fetchCustomizations = () => API.get('/customizations/');
-export const saveCustomization = (data) => API.post('/customizations/', data);
-export const addToWishlist = (jerseyId) => {
-    console.log('Adding to wishlist:', jerseyId); // Debug log
-    return API.post('/wishlist/', { jersey: parseInt(jerseyId) });
+// Authentication functions
+export const loginUser = async (data) => {
+    try {
+        const response = await API.post('/login/', data);
+        return response.data;
+    } catch (error) {
+        console.error('Login error:', error);
+        throw error;
+    }
 };
-export const removeFromWishlist = (jerseyId) => {
-    console.log('Removing from wishlist:', jerseyId); // Debug log
-    return API.delete(`/wishlist/${parseInt(jerseyId)}/`);
-};
-export const getWishlist = () => API.get('/wishlist/');
 
+export const signupUser = async (data) => {
+    try {
+        const response = await API.post('/signup/', data);
+        return response.data;
+    } catch (error) {
+        console.error('Signup error:', error);
+        throw error;
+    }
+};
+
+// Jersey and related data functions
+export const fetchJerseys = async (params = {}) => {
+    try {
+        const response = await API.get('/jerseys/', { params });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching jerseys:', error);
+        throw error;
+    }
+};
+
+export const fetchTeams = async () => {
+    try {
+        const response = await API.get('/teams/');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching teams:', error);
+        throw error;
+    }
+};
+
+export const fetchPlayers = async () => {
+    try {
+        const response = await API.get('/players/');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching players:', error);
+        throw error;
+    }
+};
+
+// Customization functions
+export const fetchCustomizations = async () => {
+    try {
+        const response = await API.get('/customizations/');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching customizations:', error);
+        throw error;
+    }
+};
+
+export const saveCustomization = async (data) => {
+    try {
+        const response = await API.post('/customizations/', data);
+        return response.data;
+    } catch (error) {
+        console.error('Error saving customization:', error);
+        throw error;
+    }
+};
+
+// Wishlist functions
+export const fetchWishlist = async () => {
+    try {
+        const response = await API.get('/wishlist/');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching wishlist:', error);
+        throw error;
+    }
+};
+
+export const addToWishlist = async (jerseyId) => {
+    try {
+        const response = await API.post('/wishlist/', { jersey: jerseyId });
+        return response.data;
+    } catch (error) {
+        console.error('Error adding to wishlist:', error);
+        throw error;
+    }
+};
+
+export const removeFromWishlist = async (jerseyId) => {
+    try {
+        const response = await API.delete(`/wishlist/${jerseyId}/`);
+        return response.data;
+    } catch (error) {
+        console.error('Error removing from wishlist:', error);
+        throw error;
+    }
+};
+
+// Auth helper functions
 export const setAuthToken = (token) => {
     if (token) {
         localStorage.setItem('token', token);
@@ -63,6 +158,5 @@ export const isLoggedIn = () => {
     return !!localStorage.getItem('token');
 };
 
-// Also export as default for components that need it
 export default API;
 

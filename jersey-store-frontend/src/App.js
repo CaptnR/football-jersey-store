@@ -21,6 +21,7 @@ import { theme } from './theme/theme';
 import { Box } from '@mui/material';
 import ErrorBoundary from './components/ErrorBoundary';
 import TestErrorComponent from './components/TestErrorComponent';
+import JerseyCustomizerPage from './pages/JerseyCustomizerPage';
 
 function PrivateRoute({ children }) {
     const isAuthenticated = !!localStorage.getItem('token');
@@ -47,7 +48,7 @@ function App() {
                                     <Route path="/login" element={<LoginPage />} />
                                     <Route path="/signup" element={<SignupPage />} />
                                     <Route path="/jersey/:id" element={<JerseyDetails />} />
-                                    <Route path="/customize" element={<CustomizationPage />} />
+                                    <Route path="/customize" element={<JerseyCustomizerPage />} />
                                     <Route path="/wishlist" element={<WishlistPage />} />
                                     <Route path="/test-error" element={<TestErrorComponent />} />
                                     

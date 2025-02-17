@@ -16,6 +16,7 @@ import { CartContext } from '../context/CartContext';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PersonIcon from '@mui/icons-material/Person';
+import CreateIcon from '@mui/icons-material/Create';
 
 function Navbar() {
     const { cartItems = [] } = useContext(CartContext);
@@ -41,12 +42,8 @@ function Navbar() {
             }}
         >
             <Container maxWidth="xl">
-                <Toolbar 
-                    sx={{ 
-                        justifyContent: 'space-between',
-                        py: 1,
-                    }}
-                >
+                <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
+                    {/* Logo/Brand */}
                     <Typography
                         variant="h6"
                         component={Link}
@@ -54,7 +51,6 @@ function Navbar() {
                         sx={{
                             textDecoration: 'none',
                             color: 'text.primary',
-                            fontFamily: 'Poppins, sans-serif',
                             fontWeight: 700,
                             fontSize: '1.5rem',
                         }}
@@ -62,77 +58,67 @@ function Navbar() {
                         Jersey Store
                     </Typography>
 
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                        {token && (
-                            <>
-                                <Button
-                                    component={Link}
-                                    to="/"
-                                    color="inherit"
-                                    sx={{ fontWeight: 500 }}
-                                >
-                                    Shop
-                                </Button>
+                    {/* Navigation Items */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Button
+                            component={Link}
+                            to="/"
+                            sx={{ 
+                                color: 'text.primary',
+                                fontWeight: 500 
+                            }}
+                        >
+                            Shop
+                        </Button>
 
-                                <IconButton
-                                    component={Link}
-                                    to="/wishlist"
-                                    color="inherit"
-                                    size="large"
-                                >
-                                    <FavoriteIcon />
-                                </IconButton>
+                        <IconButton
+                            component={Link}
+                            to="/wishlist"
+                            sx={{ color: 'text.primary' }}
+                        >
+                            <FavoriteIcon />
+                        </IconButton>
 
-                                <IconButton
-                                    component={Link}
-                                    to="/cart"
-                                    color="inherit"
-                                    size="large"
-                                >
-                                    <Badge badgeContent={cartItems?.length || 0} color="primary">
-                                        <ShoppingCartIcon />
-                                    </Badge>
-                                </IconButton>
+                        <IconButton
+                            component={Link}
+                            to="/customize"
+                            sx={{ 
+                                color: 'primary.main',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                                }
+                            }}
+                        >
+                            <CreateIcon />
+                        </IconButton>
 
-                                <IconButton
-                                    component={Link}
-                                    to="/dashboard"
-                                    color="inherit"
-                                    size="large"
-                                >
-                                    <PersonIcon />
-                                </IconButton>
+                        <IconButton
+                            component={Link}
+                            to="/cart"
+                            sx={{ color: 'text.primary' }}
+                        >
+                            <Badge badgeContent={cartItems?.length || 0} color="primary">
+                                <ShoppingCartIcon />
+                            </Badge>
+                        </IconButton>
 
-                                <Button
-                                    color="inherit"
-                                    onClick={handleLogout}
-                                    sx={{ fontWeight: 500 }}
-                                >
-                                    Logout
-                                </Button>
-                            </>
-                        )}
+                        <IconButton
+                            component={Link}
+                            to="/dashboard"
+                            sx={{ color: 'text.primary' }}
+                        >
+                            <PersonIcon />
+                        </IconButton>
 
-                        {!token && (
-                            <>
-                                <Button
-                                    component={Link}
-                                    to="/login"
-                                    color="inherit"
-                                    sx={{ fontWeight: 500 }}
-                                >
-                                    Login
-                                </Button>
-                                <Button
-                                    component={Link}
-                                    to="/signup"
-                                    color="inherit"
-                                    sx={{ fontWeight: 500 }}
-                                >
-                                    Sign Up
-                                </Button>
-                            </>
-                        )}
+                        <Button
+                            onClick={handleLogout}
+                            sx={{ 
+                                color: 'text.primary',
+                                fontWeight: 500 
+                            }}
+                        >
+                            Logout
+                        </Button>
                     </Box>
                 </Toolbar>
             </Container>

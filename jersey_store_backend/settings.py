@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-6h#5l^949-(j=vf3u1gyujsqbsfl+d9!h*sze^0v*t4e^$s&lx
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -58,10 +58,11 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React frontend
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'jersey_store_backend.urls'
 

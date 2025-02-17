@@ -96,9 +96,15 @@ class JerseyViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
 
-class CustomizationViewSet(ModelViewSet):
-    queryset = Customization.objects.all()
+class CustomizationViewSet(viewsets.ModelViewSet):
     serializer_class = CustomizationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Customization.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 class CheckoutView(APIView):
     authentication_classes = [TokenAuthentication]
