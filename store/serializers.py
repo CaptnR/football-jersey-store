@@ -17,6 +17,7 @@ class PlayerSerializer(serializers.ModelSerializer):
 class JerseySerializer(serializers.ModelSerializer):
     player = PlayerSerializer()
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    currency = serializers.SerializerMethodField()
     team_name = serializers.CharField(source='player.team.name', read_only=True)
     league = serializers.CharField(source='player.team.league', read_only=True)
     average_rating = serializers.SerializerMethodField()
@@ -24,12 +25,15 @@ class JerseySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Jersey
-        fields = ['id', 'player', 'price', 'image', 'team_name', 'league', 'average_rating', 'user_has_purchased']
+        fields = ['id', 'player', 'price', 'currency', 'image', 'team_name', 'league', 'average_rating', 'user_has_purchased']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['price'] = float(instance.price)
         return representation
+
+    def get_currency(self, obj):
+        return 'INR'
 
     def get_average_rating(self, obj):
         try:
@@ -57,8 +61,21 @@ class JerseySerializer(serializers.ModelSerializer):
 class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customization
-        fields = '__all__'
-        
+        fields = [
+            'id', 'jersey_type', 'jersey', 'name', 'number',
+            'primary_color', 'secondary_color', 'size', 'quantity'
+        ]
+        read_only_fields = ['user']
+
+    def validate(self, data):
+        if data.get('jersey_type') == 'existing' and not data.get('jersey'):
+            raise serializers.ValidationError("Jersey ID is required for existing jersey customization")
+        return data
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+
 class OrderSerializer(serializers.ModelSerializer):
     items = serializers.JSONField(default=list)
     user = serializers.StringRelatedField()

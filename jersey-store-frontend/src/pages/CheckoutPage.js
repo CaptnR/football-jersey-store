@@ -19,6 +19,7 @@ import {
     CircularProgress,
 } from '@mui/material';
 import { API } from '../api/api';
+import { CURRENCY } from '../utils/constants';
 
 const steps = ['Shipping', 'Payment', 'Review'];
 
@@ -68,9 +69,34 @@ function CheckoutPage() {
         setIsSubmitting(true);
 
         try {
-            // Get cart items from context
+            // Format cart items based on type (custom or regular)
+            const formattedItems = cartItems.map(item => {
+                if (item.type === 'custom') {
+                    return {
+                        type: 'custom',
+                        jersey_id: item.id,
+                        quantity: item.quantity,
+                        price: item.price,
+                        customization: {
+                            name: item.playerName,
+                            number: item.playerNumber,
+                            primary_color: item.primaryColor,
+                            secondary_color: item.secondaryColor
+                        }
+                    };
+                } else {
+                    return {
+                        type: 'regular',
+                        jersey_id: item.id,
+                        quantity: item.quantity,
+                        price: item.price,
+                        player: item.player
+                    };
+                }
+            });
+
             const orderData = {
-                items: cartItems,  // Send the entire cart items array
+                items: formattedItems,
                 total_price: calculateTotal(),
                 payment: {
                     name_on_card: paymentData.cardName,
@@ -84,11 +110,8 @@ function CheckoutPage() {
             const response = await API.post('/checkout/', orderData);
 
             if (response.status === 201) {
-                // Clear cart
                 clearCart();
-                // Show success message
                 setSuccessMessage('Order placed successfully!');
-                // Redirect to orders page after a delay
                 setTimeout(() => {
                     navigate('/orders');
                 }, 2000);
@@ -98,6 +121,26 @@ function CheckoutPage() {
             setError(error.response?.data?.error || 'Failed to place order. Please try again.');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const renderOrderItem = (item) => {
+        if (item.type === 'custom') {
+            return {
+                name: `Custom Jersey - ${item.playerName || 'Unnamed'}`,
+                number: item.playerNumber || 'No number',
+                price: item.price || 99.99,
+                quantity: item.quantity || 1,
+                primaryColor: item.primaryColor,
+                secondaryColor: item.secondaryColor
+            };
+        } else {
+            return {
+                name: item.player?.name || 'Regular Jersey',
+                team: item.player?.team?.name || '',
+                price: item.price || 0,
+                quantity: item.quantity || 1
+            };
         }
     };
 
@@ -296,35 +339,38 @@ function CheckoutPage() {
                         <Typography variant="h6" gutterBottom>
                             Order Summary
                         </Typography>
-                        {cartItems.map((item) => (
-                            <Box
-                                key={item.id}
-                                sx={{
-                                    py: 2,
-                                    borderBottom: '1px solid',
-                                    borderColor: 'divider',
-                                }}
-                            >
-                                <Grid container spacing={2} alignItems="center">
-                                    <Grid item xs={8}>
-                                        <Typography variant="subtitle1">
-                                            {item.player.name} Jersey
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Quantity: {item.quantity}
-                                        </Typography>
+                        {cartItems.map((item) => {
+                            const displayItem = renderOrderItem(item);
+                            return (
+                                <Box
+                                    key={item.id}
+                                    sx={{
+                                        py: 2,
+                                        borderBottom: '1px solid',
+                                        borderColor: 'divider',
+                                    }}
+                                >
+                                    <Grid container spacing={2} alignItems="center">
+                                        <Grid item xs={8}>
+                                            <Typography variant="subtitle1">
+                                                {displayItem.name}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Quantity: {displayItem.quantity}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={4}>
+                                            <Typography variant="subtitle1" align="right">
+                                                {CURRENCY.symbol}{(displayItem.price * displayItem.quantity).toFixed(2)}
+                                            </Typography>
+                                        </Grid>
                                     </Grid>
-                                    <Grid item xs={4}>
-                                        <Typography variant="subtitle1" align="right">
-                                            ${(item.price * item.quantity).toFixed(2)}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Box>
-                        ))}
+                                </Box>
+                            );
+                        })}
                         <Box sx={{ mt: 3 }}>
                             <Typography variant="h6" align="right">
-                                Total: ${calculateTotal().toFixed(2)}
+                                Total: {CURRENCY.symbol}{calculateTotal().toFixed(2)}
                             </Typography>
                         </Box>
                         <Button

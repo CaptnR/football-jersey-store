@@ -16,6 +16,7 @@ import {
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import { CURRENCY } from '../utils/constants';
 
 function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist, isInWishlist, requiresAuth }) {
     const { addToCart } = useContext(CartContext);
@@ -175,18 +176,8 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
                         size="small"
                     />
                 </Box>
-                <Typography 
-                    variant="h6" 
-                    color="primary"
-                    sx={{ 
-                        fontWeight: 600,
-                        fontFamily: 'Poppins, sans-serif',
-                    }}
-                >
-                    ${Number(jerseyData.price).toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    })}
+                <Typography variant="h6" color="primary">
+                    {CURRENCY.symbol}{jerseyData.price.toFixed(2)}
                 </Typography>
             </CardContent>
 

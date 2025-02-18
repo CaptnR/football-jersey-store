@@ -96,9 +96,35 @@ class JerseyViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
 
-class CustomizationViewSet(ModelViewSet):
-    queryset = Customization.objects.all()
+class CustomizationViewSet(viewsets.ModelViewSet):
     serializer_class = CustomizationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        # Log incoming request data
+        print("Received customization request:")
+        print(f"Headers: {request.headers}")
+        print(f"Data: {request.data}")
+        print(f"User: {request.user.username}")
+
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            print(f"Validation errors: {serializer.errors}")
+            return Response(serializer.errors, status=400)
+
+        try:
+            self.perform_create(serializer)
+            print(f"Successfully created customization: {serializer.data}")
+            return Response(serializer.data, status=201)
+        except Exception as e:
+            print(f"Error creating customization: {str(e)}")
+            return Response({"error": str(e)}, status=400)
+
+    def get_queryset(self):
+        return Customization.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 class CheckoutView(APIView):
     authentication_classes = [TokenAuthentication]
@@ -107,24 +133,36 @@ class CheckoutView(APIView):
     def post(self, request):
         try:
             user = request.user
-            cart_items = request.data.get('items', [])  # Changed to match frontend data structure
+            cart_items = request.data.get('items', [])
             total_price = request.data.get('total_price', 0.0)
             payment_data = request.data.get('payment', {})
 
-            # Validate required data
             if not cart_items:
                 return Response(
                     {"error": "Cart items are required"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Format cart items to include necessary information
-            formatted_items = [{
-                'jersey_id': item['id'],
-                'quantity': item['quantity'],
-                'price': item['price'],
-                'player_name': item['player']['name']
-            } for item in cart_items]
+            # Format cart items based on type
+            formatted_items = []
+            for item in cart_items:
+                if item['type'] == 'custom':
+                    formatted_item = {
+                        'type': 'custom',
+                        'jersey_id': item['jersey_id'],
+                        'quantity': item['quantity'],
+                        'price': item['price'],
+                        'customization': item['customization']
+                    }
+                else:
+                    formatted_item = {
+                        'type': 'regular',
+                        'jersey_id': item['jersey_id'],
+                        'quantity': item['quantity'],
+                        'price': item['price'],
+                        'player_name': item['player']['name'] if item.get('player') else 'Unknown'
+                    }
+                formatted_items.append(formatted_item)
 
             # Create an order with cart items
             order = Order.objects.create(
@@ -151,7 +189,8 @@ class CheckoutView(APIView):
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            print(f"Checkout Error: {str(e)}")  # Add logging
+            print(f"Checkout Error: {str(e)}")
+            print(f"Request data: {request.data}")  # Add more detailed logging
             return Response({
                 "error": str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
