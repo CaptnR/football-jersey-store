@@ -18,10 +18,16 @@ API.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Token ${token}`;
         }
+        console.log('Request config:', {
+            url: config.url,
+            method: config.method,
+            headers: config.headers,
+            data: config.data
+        });
         return config;
     },
     (error) => {
-        console.error('Request error:', error);
+        console.error('Request interceptor error:', error);
         return Promise.reject(error);
     }
 );
@@ -66,7 +72,11 @@ export const signupUser = async (data) => {
 export const fetchJerseys = async (params = {}) => {
     try {
         const response = await API.get('/jerseys/', { params });
-        return response.data;
+        // Ensure prices are treated as INR
+        return response.data.map(jersey => ({
+            ...jersey,
+            price: parseFloat(jersey.price)  // Price is already in INR from backend
+        }));
     } catch (error) {
         console.error('Error fetching jerseys:', error);
         throw error;
@@ -105,11 +115,49 @@ export const fetchCustomizations = async () => {
 };
 
 export const saveCustomization = async (data) => {
+    // Log incoming data from component
+    console.log('Raw data received from component:', {
+        ...data,
+        jerseyId: data.jerseyId || 'not provided'
+    });
+
+    let formattedData; // Declare formattedData outside try block
+
     try {
-        const response = await API.post('/customizations/', data);
+        if (!data.name || !data.number) {
+            throw new Error('Required fields missing: name and number are required');
+        }
+
+        formattedData = {
+            jersey_type: data.jerseyId ? 'existing' : 'custom',
+            jersey: data.jerseyId || null,
+            name: data.name,
+            number: data.number,
+            primary_color: data.primaryColor || '#000000',
+            secondary_color: data.secondaryColor || '#FFFFFF',
+            size: data.size || 'M',
+            quantity: parseInt(data.quantity) || 1
+        };
+
+        // Log formatted data before sending
+        console.log('Formatted data being sent to backend:', formattedData);
+        console.log('Request URL:', `${BASE_URL}/customizations/`);
+        console.log('Request headers:', {
+            'Content-Type': 'application/json',
+            'Authorization': `Token ${localStorage.getItem('token')}`
+        });
+
+        const response = await API.post('/customizations/', formattedData);
+        console.log('Success response from backend:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Error saving customization:', error);
+        console.error('Error details:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            originalData: data,
+            formattedData // Now formattedData is accessible here
+        });
         throw error;
     }
 };

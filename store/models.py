@@ -20,20 +20,36 @@ class Player(models.Model):
 
 class Jersey(models.Model):
     player = models.ForeignKey('Player', on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=8, decimal_places=2)
-    image = models.ImageField(upload_to='', blank=True, null=True)  # Save files directly in 'jerseys/'
+    price = models.DecimalField(max_digits=10, decimal_places=2)  # Increased max_digits for INR
+    image = models.ImageField(upload_to='', blank=True, null=True)
 
-    def get_image_url(self):
-        return f"{settings.MEDIA_URL}{self.image}" if self.image and self.image.name else settings.DEFAULT_JERSEY_IMAGE
-
-class Customization(models.Model):
-    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)
-    number = models.CharField(max_length=2)
-    design = models.TextField()
+    class Meta:
+        verbose_name_plural = "Jerseys"
 
     def __str__(self):
-        return f"Customization for {self.jersey.player.name}"
+        return f"{self.player.name}'s Jersey - {CURRENCY.symbol}{self.price}"
+
+class Customization(models.Model):
+    JERSEY_TYPE_CHOICES = [
+        ('custom', 'Custom Jersey'),
+        ('existing', 'Existing Jersey')
+    ]
+    
+    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE, null=True, blank=True)
+    jersey_type = models.CharField(max_length=10, choices=JERSEY_TYPE_CHOICES, default='custom')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    number = models.CharField(max_length=2)
+    primary_color = models.CharField(max_length=7, default='#000000')
+    secondary_color = models.CharField(max_length=7, default='#FFFFFF')
+    size = models.CharField(max_length=2, default='M')
+    quantity = models.IntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        if self.jersey:
+            return f"Customization of {self.jersey.player.name} jersey by {self.user.username}"
+        return f"Custom jersey by {self.user.username}"
     
 class Order(models.Model):
     STATUS_CHOICES = [

@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import JerseyDesigns from '../components/JerseyDesigns';
 import JerseyPreview from '../components/JerseyPreview';
+import { CURRENCY, BASE_PRICES } from '../utils/constants';
 
 function JerseyCustomizerPage() {
   const navigate = useNavigate();
@@ -50,8 +51,8 @@ function JerseyCustomizerPage() {
         design: customization.design,
         primary_color: customization.primaryColor,
         secondary_color: customization.secondaryColor,
-        player_name: customization.playerName,
-        player_number: customization.playerNumber,
+        name: customization.playerName,
+        number: customization.playerNumber,
         name_color: customization.nameColor,
         number_color: customization.numberColor,
         text: customization.text,
@@ -61,14 +62,17 @@ function JerseyCustomizerPage() {
       addToCart({
         id: response.data.id,
         type: 'custom',
-        ...customization,
-        price: 99.99,
+        playerName: customization.playerName,
+        playerNumber: customization.playerNumber,
+        primaryColor: customization.primaryColor,
+        secondaryColor: customization.secondaryColor,
+        price: BASE_PRICES.customJersey,
         quantity: 1
       });
 
       navigate('/cart');
     } catch (error) {
-      console.error('Error saving jersey:', error);
+      console.error('Error in handleSaveJersey:', error);
     }
   };
 
@@ -277,7 +281,7 @@ function JerseyCustomizerPage() {
             
             <Box sx={{ p: 3, backgroundColor: 'white' }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Total: $99.99
+                Total: {CURRENCY.symbol}{BASE_PRICES.customJersey.toFixed(2)}
               </Typography>
               <Button
                 variant="contained"
