@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
+from .constants import CURRENCY
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
@@ -20,14 +21,20 @@ class Player(models.Model):
 
 class Jersey(models.Model):
     player = models.ForeignKey('Player', on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=10, decimal_places=2)  # Increased max_digits for INR
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     image = models.ImageField(upload_to='', blank=True, null=True)
+    stock = models.IntegerField(default=0)
+    low_stock_threshold = models.IntegerField(default=100)
 
     class Meta:
         verbose_name_plural = "Jerseys"
 
     def __str__(self):
-        return f"{self.player.name}'s Jersey - {CURRENCY.symbol}{self.price}"
+        return f"{self.player.name}'s Jersey - {CURRENCY['symbol']}{self.price}"
+
+    @property
+    def is_low_stock(self):
+        return self.stock <= self.low_stock_threshold
 
 class Customization(models.Model):
     JERSEY_TYPE_CHOICES = [

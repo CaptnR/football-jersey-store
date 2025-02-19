@@ -1,6 +1,6 @@
 // Updated Navbar.js to ensure consistent spacing between all links with inline comments
 
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     AppBar,
@@ -17,11 +17,28 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PersonIcon from '@mui/icons-material/Person';
 import CreateIcon from '@mui/icons-material/Create';
+import { API } from '../api/api';
 
 function Navbar() {
     const { cartItems = [] } = useContext(CartContext);
     const navigate = useNavigate();
     const token = localStorage.getItem('token');
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    useEffect(() => {
+        const checkAdminStatus = async () => {
+            try {
+                const response = await API.get('/admin/check/');
+                setIsAdmin(response.data.is_admin);
+            } catch (error) {
+                setIsAdmin(false);
+            }
+        };
+
+        if (localStorage.getItem('token')) {
+            checkAdminStatus();
+        }
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -104,7 +121,7 @@ function Navbar() {
 
                         <IconButton
                             component={Link}
-                            to="/dashboard"
+                            to={isAdmin ? '/admin/dashboard' : '/dashboard'}
                             sx={{ color: 'text.primary' }}
                         >
                             <PersonIcon />

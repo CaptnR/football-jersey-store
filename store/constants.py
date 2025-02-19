@@ -1,0 +1,4 @@
+CURRENCY = {
+    'symbol': '₹',
+    'code': 'INR'
+} 

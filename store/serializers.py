@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Team, Player, Jersey, Customization, Order, Payment, Review
 from django.db import models
+from .constants import CURRENCY
 
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,10 +23,15 @@ class JerseySerializer(serializers.ModelSerializer):
     league = serializers.CharField(source='player.team.league', read_only=True)
     average_rating = serializers.SerializerMethodField()
     user_has_purchased = serializers.SerializerMethodField()
+    is_low_stock = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = Jersey
-        fields = ['id', 'player', 'price', 'currency', 'image', 'team_name', 'league', 'average_rating', 'user_has_purchased']
+        fields = [
+            'id', 'player', 'price', 'currency', 'image', 'team_name', 
+            'league', 'average_rating', 'user_has_purchased', 'stock',
+            'low_stock_threshold', 'is_low_stock'
+        ]
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -33,7 +39,7 @@ class JerseySerializer(serializers.ModelSerializer):
         return representation
 
     def get_currency(self, obj):
-        return 'INR'
+        return CURRENCY
 
     def get_average_rating(self, obj):
         try:
@@ -124,3 +130,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         if not isinstance(value, int) or value < 1 or value > 5:
             raise serializers.ValidationError("Rating must be an integer between 1 and 5")
         return value
+
+class AdminJerseySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Jersey
+        fields = ['id', 'stock', 'low_stock_threshold']

@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import TeamViewSet, PlayerViewSet, JerseyViewSet, CustomizationViewSet, login_user, signup_user, dashboard_view, filter_metadata
-from .views import CheckoutView, UserOrderView, AdminOrderView, AdminDashboardView, RecommendedJerseysView, WishlistView, FilterMetadataView, OrderViewSet
+from .views import CheckoutView, UserOrderView, AdminOrderView, AdminDashboardView, RecommendedJerseysView, WishlistView, FilterMetadataView, OrderViewSet, JerseyStockView
 from . import views
 
 router = DefaultRouter()
@@ -23,11 +23,18 @@ urlpatterns += [
 ]
 
 urlpatterns += [
-    # Admin order management
-    path('admin/orders/', AdminOrderView.as_view(), name='admin-orders'),
-    path('admin/orders/<int:pk>/', AdminOrderView.as_view(), name='admin-order-detail'),
-    # Admin dashboard
-    path('admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
+    # Admin routes - make sure these are at the top
+    path('admin/dashboard/', views.AdminDashboardView.as_view(), name='admin-dashboard'),
+    path('admin/orders/', views.AdminOrderView.as_view(), name='admin-orders'),
+    path('admin/orders/<int:pk>/', views.AdminOrderView.as_view(), name='admin-order-detail'),
+    path('admin/check/', views.admin_check, name='admin-check'),
+    
+    # Stock management routes
+    path('jerseys/<int:jersey_id>/stock/', views.JerseyStockView.as_view(), name='jersey-stock-update'),
+    path('jerseys/stock/', views.JerseyStockView.as_view(), name='jersey-stock'),
+]
+
+urlpatterns += [
     path('wishlist/', WishlistView.as_view(), name='wishlist-add'),
     path('wishlist/<int:jersey_id>/', WishlistView.as_view(), name='wishlist-remove'),
 ]

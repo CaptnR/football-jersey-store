@@ -59,9 +59,12 @@ function LoginPage() {
             localStorage.setItem('is_admin', response.data.is_admin.toString());
             showToast('Login successful!', 'success');
             
-            // Navigate to the page user came from or homepage
-            const from = location.state?.from?.pathname || '/';
-            navigate(from);
+            // Redirect based on user type
+            if (response.data.is_admin) {
+                navigate('/admin/dashboard');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (error) {
             console.error('Login error:', error);
             showToast(error.response?.data?.detail || 'Invalid username or password', 'error');

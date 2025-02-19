@@ -53,11 +53,7 @@ function App() {
                                     <Route path="/test-error" element={<TestErrorComponent />} />
                                     
                                     {/* Protected Routes */}
-                                    <Route path="/dashboard" element={
-                                        <PrivateRoute>
-                                            <DashboardPage />
-                                        </PrivateRoute>
-                                    } />
+                                    <Route path="/dashboard" element={<DashboardPage />} />
                                     <Route path="/cart" element={
                                         <PrivateRoute>
                                             <CartPage />
@@ -78,11 +74,7 @@ function App() {
                                             <AdminOrdersPage />
                                         </PrivateRoute>
                                     } />
-                                    <Route path="/admin/dashboard" element={
-                                        <PrivateRoute>
-                                            <AdminDashboardPage />
-                                        </PrivateRoute>
-                                    } />
+                                    <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                                 </Routes>
                             </Box>
                             <Footer />

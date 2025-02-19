@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { useToast } from '../context/ToastContext'; // If you have a toast context
 
 const BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
 
@@ -204,6 +203,37 @@ export const setAuthToken = (token) => {
 
 export const isLoggedIn = () => {
     return !!localStorage.getItem('token');
+};
+
+// Add these new functions to api.js
+export const getLowStockJerseys = async () => {
+    try {
+        console.log('Making request to /api/jerseys/stock/');
+        const response = await API.get('/api/jerseys/stock/');
+        console.log('Low stock response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Error in getLowStockJerseys:', error);
+        if (error.response) {
+            console.error('Error response:', error.response.data);
+            console.error('Error status:', error.response.status);
+        }
+        throw error;
+    }
+};
+
+export const updateJerseyStock = async (jerseyId, stockData) => {
+    try {
+        const response = await API.patch(`/jerseys/${jerseyId}/stock/`, stockData, {
+            headers: {
+                'Authorization': `Token ${localStorage.getItem('token')}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error in updateJerseyStock:', error.response || error);
+        throw error;
+    }
 };
 
 export default API;

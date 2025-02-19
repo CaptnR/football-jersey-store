@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from .models import Team, Player, Jersey, Customization, Order, Payment, Wishlist, Review
-from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer, ReviewSerializer
+from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer, ReviewSerializer, AdminJerseySerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes, action
 from django.contrib.auth.models import User
@@ -21,7 +21,10 @@ from django.http import Http404
 from contextlib import suppress
 from django.core.cache import cache
 from django.db.models import Prefetch
-from django.db.models import Count, Avg
+from django.db.models import Count, Avg, F
+import logging
+
+logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow public access
@@ -229,20 +232,78 @@ class AdminOrderView(APIView):
 
 # Admin Dashboard        
 class AdminDashboardView(APIView):
-    permission_classes = [IsAdminUser]  # Only admins can access this view
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
-        total_sales = Order.objects.filter(status__in=['Shipped', 'Delivered']).aggregate(total=models.Sum('total_price'))['total'] or 0
-        total_users = User.objects.count()
-        total_orders = Order.objects.count()
-        pending_orders = Order.objects.filter(status='Pending').count()
+        try:
+            logger.info(f"Admin dashboard request from user: {request.user.username}")
+            
+            # Get basic metrics
+            total_orders = Order.objects.count()
+            logger.info(f"Total orders: {total_orders}")
+            
+            total_revenue = Order.objects.aggregate(
+                total=models.Sum('total_price')
+            )['total'] or 0
+            logger.info(f"Total revenue: {total_revenue}")
+            
+            avg_order_value = total_revenue / total_orders if total_orders > 0 else 0
+            total_customers = User.objects.filter(is_staff=False).count()
 
-        return Response({
-            "total_sales": total_sales,
-            "total_users": total_users,
-            "total_orders": total_orders,
-            "pending_orders": pending_orders,
-        })
+            # Get orders by status
+            orders_by_status = Order.objects.values('status').annotate(
+                count=models.Count('id')
+            )
+
+            # Get low stock jerseys
+            low_stock_jerseys = Jersey.objects.filter(
+                stock__lte=F('low_stock_threshold')
+            ).select_related('player').values(
+                'id', 
+                'stock', 
+                'low_stock_threshold',
+                'player__name'
+            )
+            logger.info(f"Found {low_stock_jerseys.count()} low stock jerseys")
+
+            # Get recent orders
+            recent_orders = Order.objects.select_related('user').order_by('-created_at')[:10]
+            
+            response_data = {
+                'kpis': {
+                    'total_orders': total_orders,
+                    'total_revenue': float(total_revenue),
+                    'average_order_value': float(avg_order_value),
+                    'total_customers': total_customers,
+                    'orders_by_status': {
+                        status['status']: status['count'] 
+                        for status in orders_by_status
+                    }
+                },
+                'recent_orders': [
+                    {
+                        'id': order.id,
+                        'user': order.user.username,
+                        'total_price': float(order.total_price),
+                        'status': order.status,
+                        'created_at': order.created_at
+                    }
+                    for order in recent_orders
+                ],
+                'low_stock_jerseys': list(low_stock_jerseys)
+            }
+            
+            logger.info("Sending admin dashboard response")
+            logger.debug(f"Response data: {response_data}")
+            return Response(response_data)
+            
+        except Exception as e:
+            logger.error(f"Error in AdminDashboardView: {str(e)}")
+            logger.exception(e)
+            return Response(
+                {'error': 'Failed to fetch dashboard data'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 # Recommended Jerseys        
 class RecommendedJerseysView(APIView):
@@ -356,80 +417,49 @@ class FilterMetadataView(APIView):
 @permission_classes([IsAuthenticated])
 def dashboard_view(request):
     try:
-        user = request.user
-
-        if user.is_staff:
-            try:
-                # Calculate KPIs
-                total_orders = Order.objects.count()
-                total_revenue = Order.objects.aggregate(
-                    total=models.Sum('total_price'))['total'] or 0
-
-                # Calculate orders by status correctly
-                orders_by_status = {}
-                for status_code, status_name in Order.STATUS_CHOICES:
-                    count = Order.objects.filter(status=status_code).count()
-                    orders_by_status[status_name] = count
-
-                recent_orders = Order.objects.all().order_by('-created_at')[:10]
-                
-                response_data = {
-                    "kpis": {
-                        "total_orders": total_orders,
-                        "total_revenue": float(total_revenue),
-                        "average_order_value": round(float(total_revenue) / total_orders if total_orders > 0 else 0, 2),
-                        "total_customers": User.objects.filter(is_staff=False).count(),
-                        "orders_by_status": orders_by_status,
-                        "pending_orders": Order.objects.filter(status='pending').count(),
-                        "processing_orders": Order.objects.filter(status='processing').count(),
-                        "shipped_orders": Order.objects.filter(status='shipped').count(),
-                        "delivered_orders": Order.objects.filter(status='delivered').count(),
-                        "cancelled_orders": Order.objects.filter(status='cancelled').count()
-                    },
-                    "recent_orders": OrderSerializer(recent_orders, many=True).data,
-                }
-                return Response(response_data)
-            except Exception as admin_error:
-                print(f"Admin dashboard error: {str(admin_error)}")
-                raise
-
+        if request.user.is_staff:
+            return Response({
+                'redirect': 'admin',
+                'message': 'Please use the admin dashboard endpoint'
+            }, status=status.HTTP_303_SEE_OTHER)
+        
         # Regular user dashboard
-        try:
-            recent_orders = Order.objects.filter(user=user).order_by('-created_at')[:5]
-            print(f"Recent orders for user {user.username}: {recent_orders.count()}")
+        # Get recent orders
+        recent_orders = Order.objects.filter(user=request.user).order_by('-created_at')[:5]
+        
+        # Get wishlist items
+        wishlist_items = Wishlist.objects.filter(user=request.user).select_related(
+            'jersey', 
+            'jersey__player', 
+            'jersey__player__team'
+        )
+        
+        # Get recommended jerseys
+        recommended_jerseys = Jersey.objects.select_related(
+            'player', 
+            'player__team'
+        ).all()[:5]
 
-            wishlist_items = Wishlist.objects.filter(user=user).select_related('jersey', 'jersey__player', 'jersey__player__team')
-            print(f"Wishlist items for user {user.username}: {wishlist_items.count()}")
-
-            recommended_jerseys = Jersey.objects.select_related('player', 'player__team').all()[:5]
-            print(f"Recommended jerseys count: {recommended_jerseys.count()}")
-
-            response_data = {
-                "recent_orders": OrderSerializer(recent_orders, many=True).data,
-                "wishlist": JerseySerializer(
-                    [item.jersey for item in wishlist_items], 
-                    many=True, 
-                    context={'request': request}
-                ).data,
-                "recommendations": JerseySerializer(
-                    recommended_jerseys, 
-                    many=True, 
-                    context={'request': request}
-                ).data,
-            }
-            print("User response data structure:", list(response_data.keys()))
-            return Response(response_data)
-        except Exception as user_error:
-            print(f"User dashboard error: {str(user_error)}")
-            raise  # Re-raise to be caught by outer try-except
-
+        response_data = {
+            "recent_orders": OrderSerializer(recent_orders, many=True).data,
+            "wishlist": JerseySerializer(
+                [item.jersey for item in wishlist_items], 
+                many=True, 
+                context={'request': request}
+            ).data,
+            "recommendations": JerseySerializer(
+                recommended_jerseys, 
+                many=True, 
+                context={'request': request}
+            ).data,
+        }
+        
+        return Response(response_data)
+        
     except Exception as e:
-        print(f"Dashboard Error: {str(e)}")
-        print(f"Error type: {type(e)}")
-        import traceback
-        print(f"Traceback: {traceback.format_exc()}")
+        logger.error(f"Dashboard Error: {str(e)}")
         return Response(
-            {'error': 'Internal server error', 'details': str(e)}, 
+            {'error': 'Failed to load dashboard data'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -616,3 +646,66 @@ class OrderViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         # Redirect list to my_orders for regular users
         return self.my_orders(request)
+
+class JerseyStockView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        try:
+            logger.info(f"User {request.user.username} requesting low stock jerseys")
+            
+            # Get low stock jerseys
+            low_stock_jerseys = Jersey.objects.filter(
+                stock__lte=F('low_stock_threshold')
+            ).select_related('player')  # Add select_related for better performance
+            
+            logger.info(f"Found {low_stock_jerseys.count()} low stock jerseys")
+            
+            # Log each jersey's details
+            for jersey in low_stock_jerseys:
+                logger.info(
+                    f"Low stock jersey - ID: {jersey.id}, "
+                    f"Player: {jersey.player.name}, "
+                    f"Stock: {jersey.stock}, "
+                    f"Threshold: {jersey.low_stock_threshold}"
+                )
+            
+            serializer = JerseySerializer(low_stock_jerseys, many=True)
+            data = {
+                'low_stock_jerseys': serializer.data,
+                'count': low_stock_jerseys.count()
+            }
+            
+            logger.info(f"Returning data with {len(serializer.data)} jerseys")
+            return Response(data)
+            
+        except Exception as e:
+            logger.error(f"Error in JerseyStockView: {str(e)}")
+            logger.exception(e)
+            return Response(
+                {'error': 'Failed to fetch low stock jerseys'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def patch(self, request, jersey_id):
+        try:
+            jersey = Jersey.objects.get(id=jersey_id)
+            serializer = AdminJerseySerializer(jersey, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'message': 'Stock updated successfully',
+                    'data': serializer.data
+                })
+            return Response(serializer.errors, status=400)
+        except Jersey.DoesNotExist:
+            return Response({'error': 'Jersey not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_check(request):
+    return Response({
+        'is_admin': request.user.is_staff,
+        'username': request.user.username
+    })
