@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Team, Player, Jersey, Customization, Order, Payment, Review
+from .models import Team, Player, Jersey, Customization, Order, Payment, Review, Sale
 from django.db import models
 from .constants import CURRENCY
 
@@ -24,13 +24,15 @@ class JerseySerializer(serializers.ModelSerializer):
     average_rating = serializers.SerializerMethodField()
     user_has_purchased = serializers.SerializerMethodField()
     is_low_stock = serializers.BooleanField(read_only=True)
+    sale_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True, required=False)
+    on_sale = serializers.SerializerMethodField()
     
     class Meta:
         model = Jersey
         fields = [
             'id', 'player', 'price', 'currency', 'image', 'team_name', 
             'league', 'average_rating', 'user_has_purchased', 'stock',
-            'low_stock_threshold', 'is_low_stock'
+            'low_stock_threshold', 'is_low_stock', 'sale_price', 'on_sale'
         ]
 
     def to_representation(self, instance):
@@ -63,6 +65,9 @@ class JerseySerializer(serializers.ModelSerializer):
                 print(f"Error checking purchase status: {e}")
                 return False
         return False
+
+    def get_on_sale(self, obj):
+        return obj.sale_price is not None
 
 class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -135,3 +140,8 @@ class AdminJerseySerializer(serializers.ModelSerializer):
     class Meta:
         model = Jersey
         fields = ['id', 'stock', 'low_stock_threshold']
+
+class SaleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Sale
+        fields = '__all__'

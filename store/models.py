@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from .constants import CURRENCY
+from django.utils import timezone
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
@@ -35,6 +36,43 @@ class Jersey(models.Model):
     @property
     def is_low_stock(self):
         return self.stock <= self.low_stock_threshold
+
+    @property
+    def sale_price(self):
+        active_sales = Sale.objects.filter(
+            is_active=True,
+            start_date__lte=timezone.now(),
+            end_date__gte=timezone.now()
+        )
+        
+        applicable_sale = None
+        for sale in active_sales:
+            if sale.sale_type == 'ALL':
+                applicable_sale = sale
+            elif sale.sale_type == 'PLAYER':
+                target_player_ids = [int(id) for id in sale.target_value.split(',') if id]
+                if self.player.id in target_player_ids:
+                    applicable_sale = sale
+            elif sale.sale_type == 'TEAM':
+                target_team_ids = [int(id) for id in sale.target_value.split(',') if id]
+                if self.player.team.id in target_team_ids:
+                    applicable_sale = sale
+            elif sale.sale_type == 'LEAGUE':
+                target_leagues = sale.target_value.split(',')
+                if self.player.team.league in target_leagues:
+                    applicable_sale = sale
+            
+            if applicable_sale:
+                break
+        
+        if not applicable_sale:
+            return None
+            
+        if applicable_sale.discount_type == 'FLAT':
+            return max(0, self.price - applicable_sale.discount_value)
+        else:  # PERCENTAGE
+            discount = (applicable_sale.discount_value / 100) * self.price
+            return max(0, self.price - discount)
 
 class Customization(models.Model):
     JERSEY_TYPE_CHOICES = [
@@ -116,4 +154,29 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s review of {self.jersey.player.name} jersey"
+
+class Sale(models.Model):
+    SALE_TYPE_CHOICES = [
+        ('PLAYER', 'Player'),
+        ('TEAM', 'Team'),
+        ('LEAGUE', 'League'),
+        ('ALL', 'All Jerseys')
+    ]
+
+    DISCOUNT_TYPE_CHOICES = [
+        ('FLAT', 'Flat Amount'),
+        ('PERCENTAGE', 'Percentage')
+    ]
+
+    sale_type = models.CharField(max_length=10, choices=SALE_TYPE_CHOICES)
+    target_value = models.CharField(max_length=100)  # Player name, team name, or league name
+    discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES)
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_sale_type_display()} Sale - {self.target_value}"
 

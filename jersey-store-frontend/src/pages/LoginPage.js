@@ -5,6 +5,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { API } from '../api/api';
 import { validateLogin } from '../utils/validation';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import {
     Container,
     Box,
@@ -19,6 +20,7 @@ function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const { showToast } = useToast();
+    const { login } = useAuth();
     
     const [formData, setFormData] = useState({
         username: '',
@@ -54,17 +56,18 @@ function LoginPage() {
 
         try {
             setLoading(true);
-            const response = await API.post('/login/', formData);
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('is_admin', response.data.is_admin.toString());
+            const response = await API.post('/login/', {
+                username: formData.username,
+                password: formData.password
+            });
+            
+            const token = response.data.token;
+            const isAdmin = response.data.is_admin;
+            
+            login(token, isAdmin);
             showToast('Login successful!', 'success');
             
-            // Redirect based on user type
-            if (response.data.is_admin) {
-                navigate('/admin/dashboard');
-            } else {
-                navigate('/dashboard');
-            }
+            navigate(isAdmin ? '/admin/dashboard' : '/dashboard');
         } catch (error) {
             console.error('Login error:', error);
             showToast(error.response?.data?.detail || 'Invalid username or password', 'error');

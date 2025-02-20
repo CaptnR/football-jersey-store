@@ -1,27 +1,18 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
-
-export const adminApi = axios.create({
-    baseURL: BASE_URL,
-    headers: {
-        'Content-Type': 'application/json'
-    }
+const adminApi = axios.create({
+    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/api',
 });
 
-// Add request interceptor to add token
-adminApi.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Token ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
+adminApi.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Token ${token}`;
     }
-);
+    return config;
+});
+
+export { adminApi };
 
 export const fetchAdminDashboard = async () => {
     try {

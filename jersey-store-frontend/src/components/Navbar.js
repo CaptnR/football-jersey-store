@@ -1,6 +1,6 @@
 // Updated Navbar.js to ensure consistent spacing between all links with inline comments
 
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     AppBar,
@@ -18,31 +18,15 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PersonIcon from '@mui/icons-material/Person';
 import CreateIcon from '@mui/icons-material/Create';
 import { API } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 
 function Navbar() {
     const { cartItems = [] } = useContext(CartContext);
+    const { isAuthenticated, isAdmin, logout } = useAuth();
     const navigate = useNavigate();
-    const token = localStorage.getItem('token');
-    const [isAdmin, setIsAdmin] = useState(false);
-
-    useEffect(() => {
-        const checkAdminStatus = async () => {
-            try {
-                const response = await API.get('/admin/check/');
-                setIsAdmin(response.data.is_admin);
-            } catch (error) {
-                setIsAdmin(false);
-            }
-        };
-
-        if (localStorage.getItem('token')) {
-            checkAdminStatus();
-        }
-    }, []);
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('isAdmin');
+        logout();
         navigate('/login');
     };
 
@@ -119,23 +103,51 @@ function Navbar() {
                             </Badge>
                         </IconButton>
 
-                        <IconButton
-                            component={Link}
-                            to={isAdmin ? '/admin/dashboard' : '/dashboard'}
-                            sx={{ color: 'text.primary' }}
-                        >
-                            <PersonIcon />
-                        </IconButton>
+                        {!isAdmin && (
+                            <IconButton
+                                component={Link}
+                                to="/dashboard"
+                                sx={{ color: 'text.primary' }}
+                            >
+                                <PersonIcon />
+                            </IconButton>
+                        )}
 
-                        <Button
-                            onClick={handleLogout}
-                            sx={{ 
-                                color: 'text.primary',
-                                fontWeight: 500 
-                            }}
-                        >
-                            Logout
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', ml: 'auto' }}>
+                            {isAdmin && (
+                                <Box sx={{ display: 'flex', gap: 2 }}>
+                                    <Button
+                                        component={Link}
+                                        to="/admin/dashboard"
+                                        sx={{ color: 'text.primary', fontWeight: 500 }}
+                                    >
+                                        Dashboard
+                                    </Button>
+                                    <Button
+                                        component={Link}
+                                        to="/admin/orders"
+                                        sx={{ color: 'text.primary', fontWeight: 500 }}
+                                    >
+                                        Orders
+                                    </Button>
+                                    <Button
+                                        component={Link}
+                                        to="/admin/sales"
+                                        sx={{ color: 'text.primary', fontWeight: 500 }}
+                                    >
+                                        Sales
+                                    </Button>
+                                </Box>
+                            )}
+
+                            {/* Cart and Logout buttons */}
+                            <Button
+                                onClick={handleLogout}
+                                sx={{ color: 'text.primary', fontWeight: 500 }}
+                            >
+                                Logout
+                            </Button>
+                        </Box>
                     </Box>
                 </Toolbar>
             </Container>

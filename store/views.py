@@ -4,8 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
-from .models import Team, Player, Jersey, Customization, Order, Payment, Wishlist, Review
-from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer, ReviewSerializer, AdminJerseySerializer
+from .models import Team, Player, Jersey, Customization, Order, Payment, Wishlist, Review, Sale
+from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer, ReviewSerializer, AdminJerseySerializer, SaleSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes, action
 from django.contrib.auth.models import User
@@ -23,6 +23,7 @@ from django.core.cache import cache
 from django.db.models import Prefetch
 from django.db.models import Count, Avg, F
 import logging
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ class JerseyViewSet(viewsets.ModelViewSet):
     filterset_fields = ['player__team__league', 'player__team__name']
 
     def get_queryset(self):
-        return Jersey.objects.select_related(
+        queryset = Jersey.objects.select_related(
             'player', 
             'player__team'
         ).prefetch_related(
@@ -82,6 +83,23 @@ class JerseyViewSet(viewsets.ModelViewSet):
             review_count=Count('reviews'),
             avg_rating=Avg('reviews__rating')
         )
+        search = self.request.query_params.get('search', '')
+        
+        if search.lower() == 'sale':
+            # Get jerseys that have active sales
+            now = timezone.now()
+            active_sales = Sale.objects.filter(
+                is_active=True,
+                start_date__lte=now,
+                end_date__gte=now
+            )
+            sale_jerseys = []
+            for jersey in queryset:
+                if jersey.sale_price is not None:
+                    sale_jerseys.append(jersey.id)
+            return queryset.filter(id__in=sale_jerseys)
+            
+        return queryset
     
     def retrieve(self, request, *args, **kwargs):
         try:
@@ -709,3 +727,21 @@ def admin_check(request):
         'is_admin': request.user.is_staff,
         'username': request.user.username
     })
+
+class SaleViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    queryset = Sale.objects.all()
+    serializer_class = SaleSerializer
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)

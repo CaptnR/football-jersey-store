@@ -84,6 +84,38 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
                 },
             }}
         >
+            {jersey.on_sale && (
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        top: 20,
+                        left: -35,
+                        transform: 'rotate(-45deg)',
+                        backgroundColor: 'error.main',
+                        color: 'white',
+                        px: 4,
+                        py: 0.5,
+                        zIndex: 1,
+                        width: '140px',  // Fixed width for consistency
+                        textAlign: 'center',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',  // Add shadow for depth
+                        '&::before': {  // Add triangle decoration
+                            content: '""',
+                            position: 'absolute',
+                            left: 0,
+                            top: '100%',
+                            borderStyle: 'solid',
+                            borderWidth: '3px',
+                            borderColor: 'error.dark error.dark transparent transparent'
+                        },
+                        fontWeight: 'bold',
+                        letterSpacing: '1px',
+                        fontSize: '0.875rem'
+                    }}
+                >
+                    SALE
+                </Box>
+            )}
             {/* Wishlist Button */}
             <IconButton
                 onClick={handleWishlistAction}
@@ -176,9 +208,28 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
                         size="small"
                     />
                 </Box>
-                <Typography variant="h6" color="primary">
-                    {CURRENCY.symbol}{jerseyData.price.toFixed(2)}
-                </Typography>
+                <Box sx={{ p: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {jersey.on_sale ? (
+                            <>
+                                <Typography
+                                    variant="body1"
+                                    color="text.secondary"
+                                    sx={{ textDecoration: 'line-through' }}
+                                >
+                                    ₹{jersey.price}
+                                </Typography>
+                                <Typography variant="h6" color="error.main">
+                                    ₹{jersey.sale_price}
+                                </Typography>
+                            </>
+                        ) : (
+                            <Typography variant="h6">
+                                ₹{jersey.price}
+                            </Typography>
+                        )}
+                    </Box>
+                </Box>
             </CardContent>
 
             <CardActions sx={{ p: 2, pt: 0 }}>

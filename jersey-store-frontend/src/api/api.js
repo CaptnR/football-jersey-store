@@ -5,28 +5,20 @@ const BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
 export const API = axios.create({
     baseURL: BASE_URL,
     headers: {
-        'Content-Type': 'application/json',
-    },
-    timeout: 5000, // Add timeout
+        'Content-Type': 'application/json'
+    }
 });
 
-// Add request interceptor
+// Add request interceptor to add token
 API.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Token ${token}`;
         }
-        console.log('Request config:', {
-            url: config.url,
-            method: config.method,
-            headers: config.headers,
-            data: config.data
-        });
         return config;
     },
     (error) => {
-        console.error('Request interceptor error:', error);
         return Promise.reject(error);
     }
 );
