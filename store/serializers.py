@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import Team, Player, Jersey, Customization, Order, Payment, Review
+from .models import Team, Player, Jersey, Customization, Order, Payment, Review, Sale
 from django.db import models
+from .constants import CURRENCY
 
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,10 +23,17 @@ class JerseySerializer(serializers.ModelSerializer):
     league = serializers.CharField(source='player.team.league', read_only=True)
     average_rating = serializers.SerializerMethodField()
     user_has_purchased = serializers.SerializerMethodField()
+    is_low_stock = serializers.BooleanField(read_only=True)
+    sale_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True, required=False)
+    on_sale = serializers.SerializerMethodField()
     
     class Meta:
         model = Jersey
-        fields = ['id', 'player', 'price', 'currency', 'image', 'team_name', 'league', 'average_rating', 'user_has_purchased']
+        fields = [
+            'id', 'player', 'price', 'currency', 'image', 'team_name', 
+            'league', 'average_rating', 'user_has_purchased', 'stock',
+            'low_stock_threshold', 'is_low_stock', 'sale_price', 'on_sale'
+        ]
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -33,7 +41,7 @@ class JerseySerializer(serializers.ModelSerializer):
         return representation
 
     def get_currency(self, obj):
-        return 'INR'
+        return CURRENCY
 
     def get_average_rating(self, obj):
         try:
@@ -57,6 +65,9 @@ class JerseySerializer(serializers.ModelSerializer):
                 print(f"Error checking purchase status: {e}")
                 return False
         return False
+
+    def get_on_sale(self, obj):
+        return obj.sale_price is not None
 
 class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -124,3 +135,13 @@ class ReviewSerializer(serializers.ModelSerializer):
         if not isinstance(value, int) or value < 1 or value > 5:
             raise serializers.ValidationError("Rating must be an integer between 1 and 5")
         return value
+
+class AdminJerseySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Jersey
+        fields = ['id', 'stock', 'low_stock_threshold']
+
+class SaleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Sale
+        fields = '__all__'

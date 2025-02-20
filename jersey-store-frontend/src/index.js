@@ -4,7 +4,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
-import { CartProvider } from './context/CartContext';
 import App from './App';
 
 // Suppress ResizeObserver loop error
@@ -20,9 +19,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <React.StrictMode>
         <BrowserRouter>
-            <CartProvider>
-                <App />
-            </CartProvider>
+            <App />
         </BrowserRouter>
     </React.StrictMode>
 );

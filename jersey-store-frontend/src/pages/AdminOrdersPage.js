@@ -1,78 +1,113 @@
 // Updated AdminOrdersPage.js with Material-UI components and styling
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useLocation } from 'react-router-dom';
 import {
     Container,
     Box,
     Typography,
-    Card,
-    Grid,
-    Chip,
-    CircularProgress,
-    Alert,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
     Select,
     MenuItem,
-    IconButton,
-    TextField,
-    InputAdornment,
     FormControl,
     InputLabel,
+    Card,
+    TablePagination,
+    Chip,
+    TextField,
+    InputAdornment,
+    IconButton,
+    Alert
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import PendingIcon from '@mui/icons-material/Pending';
-import CancelIcon from '@mui/icons-material/Cancel';
-import FilterListIcon from '@mui/icons-material/FilterList';
+import { adminApi } from '../api/adminApi';
+import { debounce } from 'lodash';
 
-const getStatusIcon = (status) => {
-    switch (status) {
-        case 'delivered':
-            return <CheckCircleIcon sx={{ color: 'success.main' }} />;
-        case 'shipped':
-            return <LocalShippingIcon sx={{ color: 'info.main' }} />;
-        case 'cancelled':
-            return <CancelIcon sx={{ color: 'error.main' }} />;
-        default:
-            return <PendingIcon sx={{ color: 'warning.main' }} />;
-    }
+const ORDER_STATUSES = {
+    PENDING: 'Pending',
+    PROCESSING: 'Processing',
+    SHIPPED: 'Shipped',
+    DELIVERED: 'Delivered',
+    CANCELLED: 'Cancelled'
 };
 
-const getStatusColor = (status) => {
-    switch (status) {
-        case 'delivered':
-            return 'success';
-        case 'shipped':
-            return 'info';
-        case 'cancelled':
-            return 'error';
-        default:
-            return 'warning';
-    }
+const STATUS_COLORS = {
+    pending: 'warning',
+    processing: 'info',
+    shipped: 'primary',
+    delivered: 'success',
+    cancelled: 'error'
 };
 
 function AdminOrdersPage() {
+    const location = useLocation();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [error, setError] = useState(null);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [statusFilter, setStatusFilter] = useState(location.state?.filterStatus || 'all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
+
+    // Add debounced search function
+    const debouncedSearch = React.useCallback(
+        debounce((searchValue) => {
+            setSearchQuery(searchValue);
+        }, 500),
+        []
+    );
+
+    // Handle search input change
+    const handleSearchChange = (event) => {
+        const { value } = event.target;
+        event.persist();
+        debouncedSearch(value);
+    };
 
     useEffect(() => {
         fetchOrders();
-    }, []);
+    }, [statusFilter, searchQuery]);
 
     const fetchOrders = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://127.0.0.1:8000/api/admin/orders/', {
-                headers: { Authorization: `Token ${token}` }
-            });
-            setOrders(response.data);
-        } catch (error) {
+            setLoading(true);
+            const response = await adminApi.get('/admin/orders/');
+            let filteredOrders = response.data;
+
+            // Normalize the status values in the response data
+            filteredOrders = filteredOrders.map(order => ({
+                ...order,
+                status: order.status.toLowerCase()
+            }));
+
+            // Apply status filter
+            if (statusFilter !== 'all') {
+                filteredOrders = filteredOrders.filter(
+                    order => order.status === statusFilter.toLowerCase()
+                );
+            }
+
+            // Apply search filter
+            if (searchQuery.trim()) {
+                const searchTerm = searchQuery.toLowerCase().trim();
+                filteredOrders = filteredOrders.filter(
+                    order => 
+                        order.id.toString().includes(searchTerm) ||
+                        order.user.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            setOrders(filteredOrders);
+            setError(null);
+        } catch (err) {
+            console.error('Error fetching orders:', err);
             setError('Failed to load orders');
-            console.error('Error fetching orders:', error);
         } finally {
             setLoading(false);
         }
@@ -80,213 +115,311 @@ function AdminOrdersPage() {
 
     const handleStatusChange = async (orderId, newStatus) => {
         try {
-            const token = localStorage.getItem('token');
-            await axios.patch(
-                `http://127.0.0.1:8000/api/admin/orders/${orderId}/`,
-                { status: newStatus },
-                { headers: { Authorization: `Token ${token}` } }
-            );
-            
-            setOrders(orders.map(order => 
-                order.id === orderId ? { ...order, status: newStatus } : order
-            ));
+            await adminApi.patch(`/orders/${orderId}/status/`, {
+                status: newStatus.toLowerCase()
+            });
+            fetchOrders();
         } catch (error) {
             console.error('Error updating order status:', error);
+            setError('Failed to update order status');
         }
     };
 
-    const filteredOrders = orders.filter(order => {
-        const matchesSearch = order.id.toString().includes(searchQuery) ||
-            order.user.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
 
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-                <CircularProgress />
-            </Box>
+            <Container>
+                <Box sx={{ py: 4, textAlign: 'center' }}>
+                    Loading orders...
+                </Box>
+            </Container>
         );
     }
 
     return (
-        <Container maxWidth="lg">
-            <Box sx={{ py: 6 }}>
-                <Typography 
-                    variant="h4" 
-                    sx={{
-                        fontFamily: 'Poppins, sans-serif',
-                        fontWeight: 600,
-                        mb: 4,
+        <Box sx={{ bgcolor: '#F4F6F8', minHeight: '100vh', py: 4 }}>
+            <Container maxWidth="xl">
+                {/* Header Section */}
+                <Box sx={{ 
+                    mb: 4,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <Box>
+                        <Typography variant="h4" sx={{ mb: 1, fontWeight: 600 }}>
+                            Orders
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Manage and track all orders
+                        </Typography>
+                    </Box>
+                </Box>
+
+                {/* Filters Card */}
+                <Card 
+                    elevation={0}
+                    sx={{ 
+                        mb: 3,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2
                     }}
                 >
-                    Order Management
-                </Typography>
+                    <Box sx={{ 
+                        p: 3,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 2
+                    }}>
+                        <FormControl size="small" sx={{ width: 200 }}>
+                            <InputLabel>Status</InputLabel>
+                            <Select
+                                value={statusFilter}
+                                label="Status"
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                sx={{
+                                    height: 40,
+                                    '& .MuiSelect-select': {
+                                        py: 1
+                                    }
+                                }}
+                            >
+                                <MenuItem value="all">All Orders</MenuItem>
+                                {Object.entries(ORDER_STATUSES).map(([key, value]) => (
+                                    <MenuItem 
+                                        key={key} 
+                                        value={key.toLowerCase()}
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                width: 8,
+                                                height: 8,
+                                                borderRadius: '50%',
+                                                bgcolor: STATUS_COLORS[key.toLowerCase()]?.borderColor
+                                            }}
+                                        />
+                                        {value}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
 
+                        <TextField
+                            placeholder="Search by Order ID or Customer"
+                            onChange={handleSearchChange}
+                            sx={{ 
+                                width: 250,
+                                '& .MuiInputBase-root': {
+                                    height: 40,
+                                    padding: 0,
+                                    paddingLeft: 1.5,
+                                    paddingRight: 1.5
+                                },
+                                '& .MuiInputBase-input': {
+                                    padding: '8px 0',
+                                    height: '24px',
+                                    lineHeight: '24px'
+                                }
+                            }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon 
+                                            color="action" 
+                                            fontSize="small"
+                                            sx={{ ml: -0.5 }}
+                                        />
+                                    </InputAdornment>
+                                ),
+                                sx: {
+                                    fontSize: '0.875rem',
+                                    '& .MuiInputAdornment-root': {
+                                        height: '100%',
+                                        maxHeight: 'none',
+                                        marginRight: 0.5
+                                    }
+                                }
+                            }}
+                        />
+                    </Box>
+                </Card>
+
+                {/* Error Alert */}
                 {error && (
-                    <Alert severity="error" sx={{ mb: 4 }}>
+                    <Alert 
+                        severity="error" 
+                        sx={{ mb: 3, borderRadius: 2 }}
+                    >
                         {error}
                     </Alert>
                 )}
 
-                <Card
+                {/* Orders Table */}
+                <Card 
                     elevation={0}
-                    sx={{
-                        p: 3,
-                        mb: 4,
-                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                        backdropFilter: 'blur(8px)',
+                    sx={{ 
                         border: '1px solid',
                         borderColor: 'divider',
+                        borderRadius: 2,
+                        overflow: 'hidden'
                     }}
                 >
-                    <Grid container spacing={2} alignItems="center">
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                placeholder="Search orders..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <SearchIcon />
-                                        </InputAdornment>
-                                    ),
-                                    sx: {
-                                        borderRadius: 2,
-                                        backgroundColor: 'white',
-                                    }
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Filter by Status</InputLabel>
-                                <Select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    sx={{
-                                        borderRadius: 2,
-                                        backgroundColor: 'white',
-                                    }}
-                                >
-                                    <MenuItem value="all">All Orders</MenuItem>
-                                    <MenuItem value="pending">Pending</MenuItem>
-                                    <MenuItem value="shipped">Shipped</MenuItem>
-                                    <MenuItem value="delivered">Delivered</MenuItem>
-                                    <MenuItem value="cancelled">Cancelled</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                    </Grid>
-                </Card>
-
-                <Grid container spacing={3}>
-                    {filteredOrders.map((order) => (
-                        <Grid item xs={12} key={order.id}>
-                            <Card
-                                elevation={0}
-                                sx={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                    backdropFilter: 'blur(8px)',
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                }}
-                            >
-                                <Box sx={{ p: 3 }}>
-                                    <Grid container spacing={2} alignItems="center">
-                                        <Grid item xs={12} sm={4}>
-                                            <Typography
-                                                variant="subtitle1"
-                                                sx={{ fontWeight: 600 }}
-                                            >
-                                                Order #{order.id}
-                                            </Typography>
-                                            <Typography
-                                                variant="body2"
-                                                color="text.secondary"
-                                            >
-                                                Customer: {order.user}
-                                            </Typography>
-                                            <Typography
-                                                variant="body2"
-                                                color="text.secondary"
-                                            >
-                                                Date: {new Date(order.created_at).toLocaleDateString()}
-                                            </Typography>
-                                        </Grid>
-                                        <Grid item xs={12} sm={3}>
-                                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                                ${order.total_price}
-                                            </Typography>
-                                        </Grid>
-                                        <Grid item xs={12} sm={5}>
-                                            <FormControl fullWidth>
-                                                <Select
-                                                    value={order.status}
-                                                    onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                    <TableContainer>
+                        <Table>
+                            <TableHead>
+                                <TableRow sx={{ bgcolor: 'background.neutral' }}>
+                                    <TableCell sx={{ fontWeight: 600 }}>Order ID</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Customer</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Total</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Action</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {(orders || [])
+                                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                    .map((order) => (
+                                        <TableRow 
+                                            key={order.id}
+                                            sx={{ 
+                                                '&:hover': { 
+                                                    bgcolor: 'action.hover' 
+                                                }
+                                            }}
+                                        >
+                                            <TableCell>
+                                                <Typography variant="subtitle2">
+                                                    #{order.id}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell>{order.user}</TableCell>
+                                            <TableCell>
+                                                {new Date(order.created_at).toLocaleDateString()}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography sx={{ fontWeight: 500 }}>
+                                                    ₹{order.total_price}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    label={ORDER_STATUSES[order.status.toUpperCase()]}
+                                                    size="small"
                                                     sx={{
-                                                        borderRadius: 2,
-                                                        backgroundColor: 'white',
+                                                        bgcolor: STATUS_COLORS[order.status]?.bg,
+                                                        color: STATUS_COLORS[order.status]?.color,
+                                                        borderColor: STATUS_COLORS[order.status]?.borderColor,
+                                                        border: '1px solid',
+                                                        fontWeight: 500
+                                                    }}
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <FormControl 
+                                                    size="small" 
+                                                    sx={{ 
+                                                        width: 200,
                                                     }}
                                                 >
-                                                    <MenuItem value="pending">Pending</MenuItem>
-                                                    <MenuItem value="shipped">Shipped</MenuItem>
-                                                    <MenuItem value="delivered">Delivered</MenuItem>
-                                                    <MenuItem value="cancelled">Cancelled</MenuItem>
-                                                </Select>
-                                            </FormControl>
-                                        </Grid>
-                                    </Grid>
-
-                                    <Box sx={{ mt: 2 }}>
-                                        {order.items.map((item, index) => (
-                                            <Box
-                                                key={index}
-                                                sx={{
-                                                    py: 2,
-                                                    borderTop: '1px solid',
-                                                    borderColor: 'divider',
-                                                }}
-                                            >
-                                                <Grid container spacing={2} alignItems="center">
-                                                    <Grid item xs={2} sm={1}>
-                                                        <img
-                                                            src={item.image}
-                                                            alt={item.name}
-                                                            style={{
-                                                                width: '100%',
-                                                                height: 'auto',
-                                                                maxWidth: '50px',
-                                                            }}
-                                                        />
-                                                    </Grid>
-                                                    <Grid item xs={7} sm={9}>
-                                                        <Typography variant="body1">
-                                                            {item.name}
-                                                        </Typography>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            Quantity: {item.quantity}
-                                                        </Typography>
-                                                    </Grid>
-                                                    <Grid item xs={3} sm={2}>
-                                                        <Typography variant="body1" align="right">
-                                                            ${item.price * item.quantity}
-                                                        </Typography>
-                                                    </Grid>
-                                                </Grid>
-                                            </Box>
-                                        ))}
-                                    </Box>
-                                </Box>
-                            </Card>
-                        </Grid>
-                    ))}
-                </Grid>
-            </Box>
-        </Container>
+                                                    <Select
+                                                        value={order.status}
+                                                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                                        sx={{
+                                                            height: 40,
+                                                            '& .MuiSelect-select': {
+                                                                py: 1,
+                                                                fontSize: '0.875rem'
+                                                            }
+                                                        }}
+                                                    >
+                                                        {Object.entries(ORDER_STATUSES).map(([key, value]) => (
+                                                            <MenuItem 
+                                                                key={key} 
+                                                                value={key.toLowerCase()}
+                                                                sx={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 1,
+                                                                    fontSize: '0.875rem'
+                                                                }}
+                                                            >
+                                                                <Box
+                                                                    sx={{
+                                                                        width: 8,
+                                                                        height: 8,
+                                                                        borderRadius: '50%',
+                                                                        bgcolor: STATUS_COLORS[key.toLowerCase()]?.borderColor
+                                                                    }}
+                                                                />
+                                                                {value}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                    <Box sx={{ 
+                        borderTop: '1px solid',
+                        borderColor: 'divider'
+                    }}>
+                        <TablePagination
+                            component="div"
+                            count={orders.length}
+                            page={page}
+                            onPageChange={handleChangePage}
+                            rowsPerPage={rowsPerPage}
+                            onRowsPerPageChange={handleChangeRowsPerPage}
+                            sx={{
+                                '.MuiTablePagination-select': {
+                                    height: '32px',
+                                    paddingTop: '0px',
+                                    paddingBottom: '0px',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                },
+                                '.MuiTablePagination-selectLabel': {
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    marginBottom: 0
+                                },
+                                '.MuiTablePagination-displayedRows': {
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    marginBottom: 0
+                                },
+                                '.MuiTablePagination-actions': {
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    marginLeft: 2
+                                }
+                            }}
+                            labelRowsPerPage="Rows per page:"
+                            rowsPerPageOptions={[5, 10, 25, 50]}
+                        />
+                    </Box>
+                </Card>
+            </Container>
+        </Box>
     );
 }
 

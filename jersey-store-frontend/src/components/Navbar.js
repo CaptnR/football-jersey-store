@@ -1,7 +1,9 @@
 // Updated Navbar.js to ensure consistent spacing between all links with inline comments
 
 import React, { useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { CartContext } from '../context/CartContext';
 import {
     AppBar,
     Toolbar,
@@ -11,119 +13,258 @@ import {
     Button,
     Badge,
     Container,
+    Menu,
+    MenuItem,
+    Divider,
+    Avatar,
 } from '@mui/material';
-import { CartContext } from '../context/CartContext';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import PersonIcon from '@mui/icons-material/Person';
-import CreateIcon from '@mui/icons-material/Create';
+import {
+    Favorite as FavoriteIcon,
+    ShoppingCart as CartIcon,
+    Edit as CustomizeIcon,
+    Person as ProfileIcon,
+    Logout as LogoutIcon,
+    Menu as MenuIcon,
+    Dashboard as DashboardIcon,
+    LocalShipping as OrdersIcon,
+    TrendingUp as SalesIcon,
+} from '@mui/icons-material';
 
-function Navbar() {
+const Navbar = () => {
+    const { isAuthenticated, logout, user } = useAuth();
     const { cartItems = [] } = useContext(CartContext);
     const navigate = useNavigate();
-    const token = localStorage.getItem('token');
+    const [anchorEl, setAnchorEl] = React.useState(null);
+    const isAdmin = Boolean(user?.is_staff);
+
+    const handleMenuClick = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+    };
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('isAdmin');
+        logout();
+        handleMenuClose();
         navigate('/login');
     };
 
     return (
-        <AppBar 
-            position="sticky" 
-            sx={{
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(12px)',
-                color: 'text.primary',
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                boxShadow: 'none',
-            }}
-        >
+        <AppBar position="sticky" sx={{ backgroundColor: 'white', color: 'black' }}>
             <Container maxWidth="xl">
-                <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
+                <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
                     {/* Logo/Brand */}
                     <Typography
-                        variant="h6"
-                        component={Link}
+                        variant="h5"
+                        component={RouterLink}
                         to="/"
                         sx={{
                             textDecoration: 'none',
-                            color: 'text.primary',
+                            color: 'black',
                             fontWeight: 700,
-                            fontSize: '1.5rem',
+                            letterSpacing: 1,
+                            '&:hover': {
+                                color: 'rgba(0, 0, 0, 0.7)',
+                            }
                         }}
                     >
                         Jersey Store
                     </Typography>
 
-                    {/* Navigation Items */}
+                    {/* Navigation Links */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Button
-                            component={Link}
-                            to="/"
-                            sx={{ 
-                                color: 'text.primary',
-                                fontWeight: 500 
-                            }}
-                        >
-                            Shop
-                        </Button>
+                        {isAuthenticated && (
+                            <>
+                                <IconButton
+                                    color="inherit"
+                                    component={RouterLink}
+                                    to="/wishlist"
+                                    size="large"
+                                    sx={{
+                                        color: 'black',
+                                        '&:hover': {
+                                            color: 'rgba(0, 0, 0, 0.7)',
+                                        }
+                                    }}
+                                >
+                                    <FavoriteIcon />
+                                </IconButton>
 
-                        <IconButton
-                            component={Link}
-                            to="/wishlist"
-                            sx={{ color: 'text.primary' }}
-                        >
-                            <FavoriteIcon />
-                        </IconButton>
+                                <IconButton
+                                    color="inherit"
+                                    component={RouterLink}
+                                    to="/customize"
+                                    size="large"
+                                    sx={{
+                                        color: 'black',
+                                        '&:hover': {
+                                            color: 'rgba(0, 0, 0, 0.7)',
+                                        }
+                                    }}
+                                >
+                                    <CustomizeIcon />
+                                </IconButton>
 
-                        <IconButton
-                            component={Link}
-                            to="/customize"
-                            sx={{ 
-                                color: 'primary.main',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                                }
-                            }}
-                        >
-                            <CreateIcon />
-                        </IconButton>
+                                <IconButton
+                                    color="inherit"
+                                    component={RouterLink}
+                                    to="/cart"
+                                    size="large"
+                                    sx={{
+                                        color: 'black',
+                                        '&:hover': {
+                                            color: 'rgba(0, 0, 0, 0.7)',
+                                        }
+                                    }}
+                                >
+                                    <Badge 
+                                        badgeContent={cartItems.length} 
+                                        color="error"
+                                        sx={{
+                                            '& .MuiBadge-badge': {
+                                                fontSize: '0.8rem',
+                                                height: '20px',
+                                                minWidth: '20px',
+                                            }
+                                        }}
+                                    >
+                                        <CartIcon />
+                                    </Badge>
+                                </IconButton>
 
-                        <IconButton
-                            component={Link}
-                            to="/cart"
-                            sx={{ color: 'text.primary' }}
-                        >
-                            <Badge badgeContent={cartItems?.length || 0} color="primary">
-                                <ShoppingCartIcon />
-                            </Badge>
-                        </IconButton>
+                                <Box
+                                    onClick={handleMenuClick}
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1,
+                                        cursor: 'pointer',
+                                        padding: '6px 12px',
+                                        borderRadius: 1,
+                                        transition: 'all 0.2s ease-in-out',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                        }
+                                    }}
+                                >
+                                    <Avatar 
+                                        sx={{ 
+                                            width: 32, 
+                                            height: 32,
+                                            backgroundColor: 'black',
+                                            color: 'white',
+                                            fontSize: '0.9rem',
+                                            fontWeight: 500,
+                                            borderRadius: 1,
+                                        }}
+                                    >
+                                        {user?.username?.[0]?.toUpperCase() || <ProfileIcon sx={{ fontSize: 18 }} />}
+                                    </Avatar>
+                                    <Typography
+                                        sx={{
+                                            fontWeight: 500,
+                                            color: 'black',
+                                            display: { xs: 'none', sm: 'block' }
+                                        }}
+                                    >
+                                        {user?.username || 'User'}
+                                    </Typography>
+                                    <MenuIcon 
+                                        sx={{ 
+                                            fontSize: 20,
+                                            color: 'black',
+                                            display: { xs: 'none', sm: 'block' }
+                                        }} 
+                                    />
+                                </Box>
 
-                        <IconButton
-                            component={Link}
-                            to="/dashboard"
-                            sx={{ color: 'text.primary' }}
-                        >
-                            <PersonIcon />
-                        </IconButton>
+                                <Menu
+                                    anchorEl={anchorEl}
+                                    open={Boolean(anchorEl)}
+                                    onClose={handleMenuClose}
+                                    keepMounted
+                                    PaperProps={{
+                                        elevation: 3,
+                                        sx: {
+                                            mt: 1.5,
+                                            minWidth: 200,
+                                        }
+                                    }}
+                                >
+                                    <MenuItem 
+                                        onClick={handleMenuClose}
+                                        component={RouterLink}
+                                        to={isAdmin ? '/admin/dashboard' : '/dashboard'}
+                                        sx={{ gap: 1.5, color: 'black' }}
+                                    >
+                                        <DashboardIcon fontSize="small" />
+                                        {isAdmin ? 'Admin Dashboard' : 'Dashboard'}
+                                    </MenuItem>
 
-                        <Button
-                            onClick={handleLogout}
-                            sx={{ 
-                                color: 'text.primary',
-                                fontWeight: 500 
-                            }}
-                        >
-                            Logout
-                        </Button>
+                                    {isAdmin && (
+                                        <>
+                                            <MenuItem 
+                                                onClick={handleMenuClose}
+                                                component={RouterLink}
+                                                to="/admin/orders"
+                                                sx={{ gap: 1.5, color: 'black' }}
+                                            >
+                                                <OrdersIcon fontSize="small" />
+                                                Orders
+                                            </MenuItem>
+                                            <MenuItem 
+                                                onClick={handleMenuClose}
+                                                component={RouterLink}
+                                                to="/admin/sales"
+                                                sx={{ gap: 1.5, color: 'black' }}
+                                            >
+                                                <SalesIcon fontSize="small" />
+                                                Sales
+                                            </MenuItem>
+                                        </>
+                                    )}
+
+                                    <Divider sx={{ my: 1 }} />
+                                    
+                                    <MenuItem 
+                                        onClick={handleLogout}
+                                        sx={{ 
+                                            color: 'error.main',
+                                            gap: 1.5
+                                        }}
+                                    >
+                                        <LogoutIcon fontSize="small" />
+                                        Logout
+                                    </MenuItem>
+                                </Menu>
+                            </>
+                        )}
+
+                        {!isAuthenticated && (
+                            <Button
+                                component={RouterLink}
+                                to="/login"
+                                variant="outlined"
+                                sx={{
+                                    fontWeight: 600,
+                                    color: 'black',
+                                    borderColor: 'black',
+                                    '&:hover': {
+                                        borderColor: 'black',
+                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                    }
+                                }}
+                            >
+                                Login
+                            </Button>
+                        )}
                     </Box>
                 </Toolbar>
             </Container>
         </AppBar>
     );
-}
+};
 
 export default Navbar;
