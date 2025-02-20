@@ -26,53 +26,33 @@ function LoginPage() {
         username: '',
         password: ''
     });
-    const [errors, setErrors] = useState({});
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-        // Clear error when user starts typing
-        if (errors[name]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: ''
-            }));
-        }
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        // Validate form
-        const validationErrors = validateLogin(formData);
-        if (Object.keys(validationErrors).length > 0) {
-            setErrors(validationErrors);
-            return;
-        }
+        setError('');
 
         try {
-            setLoading(true);
-            const response = await API.post('/login/', {
-                username: formData.username,
-                password: formData.password
-            });
-            
-            const token = response.data.token;
-            const isAdmin = response.data.is_admin;
-            
-            login(token, isAdmin);
-            showToast('Login successful!', 'success');
-            
-            navigate(isAdmin ? '/admin/dashboard' : '/dashboard');
+            // Log the form data being sent
+            console.log('Submitting form data:', formData);
+
+            if (!formData.username || !formData.password) {
+                setError('Username and password are required');
+                return;
+            }
+
+            await login(formData);
+            navigate('/');
         } catch (error) {
-            console.error('Login error:', error);
-            showToast(error.response?.data?.detail || 'Invalid username or password', 'error');
-        } finally {
-            setLoading(false);
+            setError(error.response?.data?.error || 'Login failed');
         }
     };
 
@@ -84,6 +64,12 @@ function LoginPage() {
                         Login
                     </Typography>
                     
+                    {error && (
+                        <Alert severity="error" sx={{ mb: 2 }}>
+                            {error}
+                        </Alert>
+                    )}
+
                     <form onSubmit={handleSubmit}>
                         <TextField
                             fullWidth
@@ -91,11 +77,9 @@ function LoginPage() {
                             name="username"
                             value={formData.username}
                             onChange={handleChange}
-                            error={!!errors.username}
-                            helperText={errors.username}
                             margin="normal"
+                            required
                         />
-                        
                         <TextField
                             fullWidth
                             label="Password"
@@ -103,20 +87,17 @@ function LoginPage() {
                             type="password"
                             value={formData.password}
                             onChange={handleChange}
-                            error={!!errors.password}
-                            helperText={errors.password}
                             margin="normal"
+                            required
                         />
-
                         <Button
                             type="submit"
                             fullWidth
                             variant="contained"
-                            size="large"
-                            disabled={loading}
-                            sx={{ mt: 3, mb: 2 }}
+                            color="primary"
+                            sx={{ mt: 3 }}
                         >
-                            {loading ? 'Logging in...' : 'Login'}
+                            Login
                         </Button>
                     </form>
 

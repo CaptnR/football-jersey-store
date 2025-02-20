@@ -13,10 +13,18 @@ import {
   Paper,
   Typography,
   Divider,
+  Card,
+  IconButton,
+  Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import JerseyDesigns from '../components/JerseyDesigns';
 import JerseyPreview from '../components/JerseyPreview';
 import { CURRENCY, BASE_PRICES } from '../utils/constants';
+import FlipIcon from '@mui/icons-material/Flip';
 
 function JerseyCustomizerPage() {
   const navigate = useNavigate();
@@ -29,10 +37,10 @@ function JerseyCustomizerPage() {
     playerName: '',
     playerNumber: '',
     nameColor: '#ffffff',
-    numberColor: '#ffffff',
-    text: '',
-    logo: null
+    frontText: '',
+    frontTextType: 'team'
   });
+  const [showFront, setShowFront] = useState(false);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -56,7 +64,9 @@ function JerseyCustomizerPage() {
         name_color: customization.nameColor,
         number_color: customization.numberColor,
         text: customization.text,
-        logo: customization.logo
+        logo: customization.logo,
+        front_text: customization.frontText,
+        front_text_type: customization.frontTextType
       });
 
       addToCart({
@@ -66,6 +76,8 @@ function JerseyCustomizerPage() {
         playerNumber: customization.playerNumber,
         primaryColor: customization.primaryColor,
         secondaryColor: customization.secondaryColor,
+        frontText: customization.frontText,
+        frontTextType: customization.frontTextType,
         price: BASE_PRICES.customJersey,
         quantity: 1
       });
@@ -74,6 +86,10 @@ function JerseyCustomizerPage() {
     } catch (error) {
       console.error('Error in handleSaveJersey:', error);
     }
+  };
+
+  const handleFlipJersey = () => {
+    setShowFront(!showFront);
   };
 
   return (
@@ -101,13 +117,23 @@ function JerseyCustomizerPage() {
               borderRadius: 2
             }}
           >
-            <JerseyPreview 
-              customization={{
-                ...customization,
-                number: customization.playerNumber,
-                name: customization.playerName
-              }} 
-            />
+            <IconButton 
+              onClick={handleFlipJersey}
+              sx={{ 
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 1
+              }}
+            >
+              <FlipIcon />
+            </IconButton>
+            <Box sx={{ position: 'relative' }}>
+              <JerseyPreview 
+                customization={customization}
+                showFront={showFront}
+              />
+            </Box>
           </Paper>
         </Grid>
 
@@ -116,183 +142,150 @@ function JerseyCustomizerPage() {
           <Paper 
             elevation={0}
             sx={{ 
+              p: 4,
               backgroundColor: 'rgba(255, 255, 255, 0.8)',
               backdropFilter: 'blur(8px)',
               border: '1px solid',
               borderColor: 'divider',
-              borderRadius: 2,
-              position: 'sticky',
-              top: '20px'
+              borderRadius: 2
             }}
           >
-            <Tabs 
-              value={activeTab} 
+            <Tabs
+              value={activeTab}
               onChange={handleTabChange}
-              variant="fullWidth"
-              sx={{ 
-                borderBottom: 1, 
-                borderColor: 'divider',
-                '& .MuiTab-root': {
-                  py: 2
-                }
-              }}
+              sx={{ mb: 3 }}
             >
-              <Tab label="Design" value="design" />
-              <Tab label="Colors" value="colors" />
-              <Tab label="Player" value="player" />
-              <Tab label="Logo" value="logo" />
+              <Tab value="design" label="Design" />
+              <Tab value="text" label="Text" />
             </Tabs>
 
-            <Box sx={{ p: 3, maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-              {activeTab === 'design' && (
+            {activeTab === 'design' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <JerseyDesigns
                   selectedDesign={customization.design}
                   onDesignSelect={(design) => handleCustomizationChange('design', design)}
                 />
-              )}
 
-              {activeTab === 'colors' && (
-                <Box>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Jersey Color
+                {/* Add Color Customization Section */}
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Colors
                   </Typography>
-                  <TextField
-                    fullWidth
-                    type="color"
-                    value={customization.primaryColor}
-                    onChange={(e) => handleCustomizationChange('primaryColor', e.target.value)}
-                    sx={{ 
-                      mb: 3,
-                      '& input': {
-                        height: '50px',
-                        cursor: 'pointer'
-                      }
-                    }}
-                  />
                   
-                  <Typography variant="subtitle1" gutterBottom>
-                    Design Color
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    type="color"
-                    value={customization.secondaryColor}
-                    onChange={(e) => handleCustomizationChange('secondaryColor', e.target.value)}
-                    sx={{ 
-                      mb: 3,
-                      '& input': {
-                        height: '50px',
-                        cursor: 'pointer'
-                      }
-                    }}
-                  />
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Box>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Primary Color
+                      </Typography>
+                      <input
+                        type="color"
+                        value={customization.primaryColor}
+                        onChange={(e) => handleCustomizationChange('primaryColor', e.target.value)}
+                        style={{ width: '100%', height: '40px' }}
+                      />
+                    </Box>
 
+                    <Box>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Secondary Color
+                      </Typography>
+                      <input
+                        type="color"
+                        value={customization.secondaryColor}
+                        onChange={(e) => handleCustomizationChange('secondaryColor', e.target.value)}
+                        style={{ width: '100%', height: '40px' }}
+                      />
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
+            )}
+
+            {activeTab === 'text' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Button
+                  variant="outlined"
+                  onClick={handleFlipJersey}
+                  startIcon={<FlipIcon />}
+                  sx={{ mb: 2 }}
+                >
+                  {showFront ? 'Show Back Side' : 'Show Front Side'}
+                </Button>
+
+                {showFront ? (
+                  <>
+                    <Typography variant="h6" gutterBottom>
+                      Front Text Customization
+                    </Typography>
+                    
+                    <FormControl fullWidth>
+                      <InputLabel>Text Type</InputLabel>
+                      <Select
+                        value={customization.frontTextType}
+                        onChange={(e) => handleCustomizationChange('frontTextType', e.target.value)}
+                        label="Text Type"
+                      >
+                        <MenuItem value="team">Team Name</MenuItem>
+                        <MenuItem value="sponsor">Sponsor Name</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <TextField
+                      fullWidth
+                      label={customization.frontTextType === 'team' ? 'Team Name' : 'Sponsor Name'}
+                      value={customization.frontText}
+                      onChange={(e) => handleCustomizationChange('frontText', e.target.value)}
+                      variant="outlined"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="h6" gutterBottom>
+                      Back Text Customization
+                    </Typography>
+                    
+                    <TextField
+                      fullWidth
+                      label="Player Name"
+                      value={customization.playerName}
+                      onChange={(e) => handleCustomizationChange('playerName', e.target.value)}
+                      variant="outlined"
+                    />
+
+                    <TextField
+                      fullWidth
+                      label="Player Number"
+                      value={customization.playerNumber}
+                      onChange={(e) => handleCustomizationChange('playerNumber', e.target.value)}
+                      variant="outlined"
+                    />
+                  </>
+                )}
+
+                <Box sx={{ mt: 2 }}>
                   <Typography variant="subtitle1" gutterBottom>
-                    Name Color
+                    Text Color
                   </Typography>
-                  <TextField
-                    fullWidth
+                  <input
                     type="color"
                     value={customization.nameColor}
                     onChange={(e) => handleCustomizationChange('nameColor', e.target.value)}
-                    sx={{ 
-                      mb: 3,
-                      '& input': {
-                        height: '50px',
-                        cursor: 'pointer'
-                      }
-                    }}
-                  />
-
-                  <Typography variant="subtitle1" gutterBottom>
-                    Number Color
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    type="color"
-                    value={customization.numberColor}
-                    onChange={(e) => handleCustomizationChange('numberColor', e.target.value)}
-                    sx={{ 
-                      '& input': {
-                        height: '50px',
-                        cursor: 'pointer'
-                      }
-                    }}
+                    style={{ width: '100%', height: '40px' }}
                   />
                 </Box>
-              )}
+              </Box>
+            )}
 
-              {activeTab === 'player' && (
-                <Box>
-                  <TextField
-                    fullWidth
-                    label="Player Name"
-                    value={customization.playerName}
-                    onChange={(e) => handleCustomizationChange('playerName', e.target.value)}
-                    sx={{ mb: 3 }}
-                  />
-                  
-                  <TextField
-                    fullWidth
-                    label="Player Number"
-                    value={customization.playerNumber}
-                    onChange={(e) => handleCustomizationChange('playerNumber', e.target.value)}
-                    inputProps={{ maxLength: 2 }}
-                  />
-                </Box>
-              )}
+            <Divider sx={{ my: 3 }} />
 
-              {activeTab === 'logo' && (
-                <Box>
-                  <Button
-                    variant="outlined"
-                    component="label"
-                    fullWidth
-                    sx={{ height: '100px' }}
-                  >
-                    {customization.logo ? 'Change Logo' : 'Upload Logo'}
-                    <input
-                      type="file"
-                      hidden
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          handleCustomizationChange('logo', URL.createObjectURL(file));
-                        }
-                      }}
-                    />
-                  </Button>
-                  
-                  {customization.logo && (
-                    <Box sx={{ mt: 2, textAlign: 'center' }}>
-                      <img 
-                        src={customization.logo} 
-                        alt="Uploaded logo" 
-                        style={{ maxWidth: '100%', maxHeight: '100px' }} 
-                      />
-                    </Box>
-                  )}
-                </Box>
-              )}
-            </Box>
-
-            <Divider />
-            
-            <Box sx={{ p: 3, backgroundColor: 'white' }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Total: {CURRENCY.symbol}{BASE_PRICES.customJersey.toFixed(2)}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6">
+                Price: ₹{BASE_PRICES.customJersey}
               </Typography>
               <Button
                 variant="contained"
-                fullWidth
-                size="large"
                 onClick={handleSaveJersey}
-                sx={{
-                  py: 2,
-                  fontSize: '1.1rem',
-                  fontWeight: 600
-                }}
+                size="large"
               >
                 Add to Cart
               </Button>

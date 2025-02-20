@@ -1,17 +1,23 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 export const API = axios.create({
     baseURL: BASE_URL,
     headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
     }
 });
 
-// Add request interceptor to add token
+// Add request interceptor to include token and handle data
 API.interceptors.request.use(
     (config) => {
+        // Log outgoing requests (without sensitive data)
+        console.log('Making request to:', config.url, {
+            ...config.data,
+            password: config.data?.password ? '***' : undefined
+        });
+        
         const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Token ${token}`;
@@ -19,18 +25,27 @@ API.interceptors.request.use(
         return config;
     },
     (error) => {
+        console.error('Request error:', error);
         return Promise.reject(error);
     }
 );
 
-// Add response interceptor
+// Add response interceptor to handle common errors
 API.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        console.log('Response received:', response.data);
+        return response;
+    },
     (error) => {
-        if (error.code === 'ERR_NETWORK') {
-            console.error('Network error - Is the backend server running?');
-            // You can show a toast message here
-        } else if (error.response?.status === 401) {
+        console.error('API Error:', {
+            url: error.config?.url,
+            method: error.config?.method,
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message
+        });
+        
+        if (error.response?.status === 401) {
             localStorage.removeItem('token');
             window.location.href = '/login';
         }

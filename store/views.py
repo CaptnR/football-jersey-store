@@ -41,20 +41,40 @@ def signup_user(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_user(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
     try:
-        user = User.objects.get(username=username)
-        if user.check_password(password):
-            token, created = Token.objects.get_or_create(user=user)
+        # Add debug logging
+        print("Login attempt with data:", request.data)
+        
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        if not username or not password:
             return Response({
-                'token': token.key,
-                'is_admin': user.is_staff,  # Make sure this is being sent
-                'username': user.username
-            })
-        return Response({'error': 'Invalid password'}, status=400)
-    except User.DoesNotExist:
-        return Response({'error': 'User does not exist'}, status=400)
+                'error': 'Username and password are required'
+            }, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+            if user.check_password(password):
+                token, created = Token.objects.get_or_create(user=user)
+                return Response({
+                    'token': token.key,
+                    'is_admin': user.is_staff,
+                    'username': user.username
+                })
+            return Response({
+                'error': 'Invalid password'
+            }, status=400)
+        except User.DoesNotExist:
+            return Response({
+                'error': 'User does not exist'
+            }, status=400)
+            
+    except Exception as e:
+        print("Login error:", str(e))  # Add server-side error logging
+        return Response({
+            'error': 'Server error occurred'
+        }, status=500)
 
 class TeamViewSet(ModelViewSet):
     queryset = Team.objects.all()
