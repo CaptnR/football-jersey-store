@@ -147,7 +147,7 @@ function DashboardPage() {
                                         Order #{order.id}
                                     </Typography>
                                     <Typography>
-                                        Total: ${order.total_price}
+                                        Total: ₹{order.total_price}
                                     </Typography>
                                     <Typography>
                                         Status: {order.status}
@@ -188,7 +188,7 @@ function DashboardPage() {
                                         {jersey.player?.name}'s Jersey
                                     </Typography>
                                     <Typography>
-                                        ${jersey.price}
+                                        ₹{jersey.price}
                                     </Typography>
                                     <Button
                                         variant="contained"
@@ -228,7 +228,7 @@ function DashboardPage() {
                                         {jersey.player?.name}'s Jersey
                                     </Typography>
                                     <Typography>
-                                        ${jersey.price}
+                                        ₹{jersey.price}
                                     </Typography>
                                     <Button
                                         variant="contained"

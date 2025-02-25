@@ -132,7 +132,7 @@ function CartPage() {
                                                             {item.player?.name} Jersey
                                                         </Typography>
                                                         <Typography variant="h6" color="primary">
-                                                            ${(item.price * item.quantity).toFixed(2)}
+                                                            ₹{(item.price * item.quantity).toFixed(2)}
                                                         </Typography>
                                                     </Box>
                                                     <Box sx={{ 
@@ -245,7 +245,7 @@ function CartPage() {
                                             </Grid>
                                             <Grid item xs={6}>
                                                 <Typography align="right">
-                                                    ${calculateTotal().toFixed(2)}
+                                                    ₹{(calculateTotal()).toFixed(2)}
                                                 </Typography>
                                             </Grid>
                                         </Grid>

@@ -275,9 +275,15 @@ function JerseyDetails() {
                                             <Typography variant="h6" color="text.secondary" gutterBottom>
                                                 {jersey.player.team.name}
                                             </Typography>
-                                            <Typography variant="h5" color="primary" sx={{ mb: 3 }}>
-                                                ${jersey.price}
+                                            <Typography variant="h5" component="div">
+                                                ₹{jersey.price}
                                             </Typography>
+
+                                            {jersey.on_sale && (
+                                                <Typography variant="h6" color="error">
+                                                    Sale Price: ₹{jersey.sale_price}
+                                                </Typography>
+                                            )}
 
                                             <Grid container spacing={2}>
                                                 <Grid item>

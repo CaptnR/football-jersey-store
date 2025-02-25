@@ -119,7 +119,7 @@ function UserOrdersPage() {
                                             Placed on: {new Date(order.created_at).toLocaleDateString()}
                                         </Typography>
                                         <Typography variant="h6" color="primary">
-                                            Total: ${order.total_price}
+                                            Total: ₹{order.total_price}
                                         </Typography>
                                         
                                         {/* Order Items */}
