@@ -22,6 +22,11 @@ import {
     Fade,
     TextField,
     Divider,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Snackbar,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -59,6 +64,20 @@ function JerseyDetails() {
     const [userReview, setUserReview] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+
+    // New state for size selection
+    const [selectedSize, setSelectedSize] = useState('M');
+    const [showAlert, setShowAlert] = useState(false);
+
+    const SIZES = [
+        { value: 'XS', label: 'Extra Small' },
+        { value: 'S', label: 'Small' },
+        { value: 'M', label: 'Medium' },
+        { value: 'L', label: 'Large' },
+        { value: 'XL', label: 'Extra Large' },
+        { value: 'XXL', label: 'Double Extra Large' },
+        { value: 'XXXL', label: 'Triple Extra Large' }
+    ];
 
     // Fetch initial data
     useEffect(() => {
@@ -157,13 +176,19 @@ function JerseyDetails() {
     };
 
     const handleAddToCart = () => {
-        setIsAddingToCart(true);
-        addToCart(jersey);
-        showToast('Added to cart successfully', 'success');
-        setTimeout(() => {
-            setIsAddingToCart(false);
-            navigate('/cart');
-        }, 500);
+        if (!jersey) return;
+
+        const itemToAdd = {
+            ...jersey,
+            size: selectedSize
+        };
+        
+        addToCart(itemToAdd);
+        setShowAlert(true);
+    };
+
+    const handleSizeChange = (event) => {
+        setSelectedSize(event.target.value);
     };
 
     const handleWishlist = async () => {
@@ -275,9 +300,31 @@ function JerseyDetails() {
                                             <Typography variant="h6" color="text.secondary" gutterBottom>
                                                 {jersey.player.team.name}
                                             </Typography>
-                                            <Typography variant="h5" color="primary" sx={{ mb: 3 }}>
-                                                ${jersey.price}
+                                            <Typography variant="h5" component="div">
+                                                ₹{jersey.price}
                                             </Typography>
+
+                                            {jersey.on_sale && (
+                                                <Typography variant="h6" color="error">
+                                                    Sale Price: ₹{jersey.sale_price}
+                                                </Typography>
+                                            )}
+
+                                            {/* Size Selection */}
+                                            <FormControl fullWidth sx={{ my: 2 }}>
+                                                <InputLabel>Size</InputLabel>
+                                                <Select
+                                                    value={selectedSize}
+                                                    onChange={handleSizeChange}
+                                                    label="Size"
+                                                >
+                                                    {SIZES.map((size) => (
+                                                        <MenuItem key={size.value} value={size.value}>
+                                                            {size.label}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
 
                                             <Grid container spacing={2}>
                                                 <Grid item>
@@ -324,6 +371,22 @@ function JerseyDetails() {
                     ) : null}
                 </Box>
             </LoadingOverlay>
+
+            {/* Success Alert */}
+            <Snackbar
+                open={showAlert}
+                autoHideDuration={3000}
+                onClose={() => setShowAlert(false)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert 
+                    onClose={() => setShowAlert(false)} 
+                    severity="success"
+                    sx={{ width: '100%' }}
+                >
+                    Added to cart successfully!
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

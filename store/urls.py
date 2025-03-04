@@ -56,5 +56,5 @@ urlpatterns += [
 ]
 
 urlpatterns += [
-    path('metadata/', filter_metadata, name='filter-metadata'),
+    path('filter-metadata/', filter_metadata, name='filter-metadata'),
 ]

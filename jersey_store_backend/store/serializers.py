@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Customization
+from .models import Customization, OrderItem, Order
 
 class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,4 +28,16 @@ class CustomizationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
-        return Customization.objects.create(user=user, **validated_data) 
+        return Customization.objects.create(user=user, **validated_data)
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['type', 'jersey_id', 'quantity', 'price', 'player_name', 'size']
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'status', 'total_price', 'created_at', 'updated_at', 'items'] 

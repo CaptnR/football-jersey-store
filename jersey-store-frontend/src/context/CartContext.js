@@ -23,20 +23,33 @@ export const CartProvider = ({ children }) => {
         }
     }, [cartItems]);
 
-    const addToCart = (jersey) => {
-        setCartItems(prevItems => {
-            // Ensure prevItems is an array
-            const items = Array.isArray(prevItems) ? prevItems : [];
-            const existingItem = items.find(item => item.id === jersey.id);
-            
+    const addToCart = (item) => {
+        setCartItems(prevCart => {
+            const existingItem = prevCart.find(i => 
+                i.id === item.id && i.size === item.size
+            );
+
+            // Determine the correct price to use
+            const priceToUse = item.sale_price || item.price;
+
             if (existingItem) {
-                return items.map(item =>
-                    item.id === jersey.id
-                        ? { ...item, quantity: item.quantity + 1 }
-                        : item
+                return prevCart.map(cartItem =>
+                    cartItem.id === item.id && cartItem.size === item.size
+                        ? { 
+                            ...cartItem, 
+                            quantity: cartItem.quantity + 1,
+                            price: priceToUse // Update price in case it changed
+                        }
+                        : cartItem
                 );
             }
-            return [...items, { ...jersey, quantity: 1 }];
+
+            return [...prevCart, { 
+                ...item, 
+                quantity: 1,
+                price: priceToUse,
+                size: item.size || 'M'
+            }];
         });
     };
 
@@ -61,7 +74,10 @@ export const CartProvider = ({ children }) => {
 
     const calculateTotal = () => {
         if (!Array.isArray(cartItems)) return 0;
-        return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+        return cartItems.reduce((total, item) => {
+            const itemPrice = item.sale_price || item.price;
+            return total + (itemPrice * item.quantity);
+        }, 0);
     };
 
     const clearCart = () => {

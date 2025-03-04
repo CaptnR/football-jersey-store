@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Team, Player, Jersey, Customization, Order, Payment, Review, Sale
+from .models import Team, Player, Jersey, Customization, Order, Review, Sale, OrderItem
 from django.db import models
 from .constants import CURRENCY
 
@@ -38,6 +38,8 @@ class JerseySerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['price'] = float(instance.price)
+        if instance.sale_price is not None:
+            representation['sale_price'] = float(instance.sale_price)
         return representation
 
     def get_currency(self, obj):
@@ -87,8 +89,13 @@ class CustomizationSerializer(serializers.ModelSerializer):
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
 
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['jersey', 'quantity', 'price', 'size', 'type', 'player_name']
+
 class OrderSerializer(serializers.ModelSerializer):
-    items = serializers.JSONField(default=list)
+    items = OrderItemSerializer(many=True, read_only=True)
     user = serializers.StringRelatedField()
     total_price = serializers.DecimalField(max_digits=10, decimal_places=2)
     
@@ -114,11 +121,6 @@ class AdminOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['id', 'user', 'total_price', 'status', 'created_at']
-
-class PaymentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Payment
-        fields = ['id', 'order', 'name_on_card', 'card_number', 'expiration_date']
 
 class ReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
