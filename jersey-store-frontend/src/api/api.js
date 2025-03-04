@@ -1,12 +1,10 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-
 export const API = axios.create({
-    baseURL: BASE_URL,
+    baseURL: 'http://localhost:8000/api',  // Make sure this matches your backend URL
     headers: {
         'Content-Type': 'application/json',
-    }
+    },
 });
 
 // Add request interceptor to include token and handle data
@@ -147,7 +145,7 @@ export const saveCustomization = async (data) => {
 
         // Log formatted data before sending
         console.log('Formatted data being sent to backend:', formattedData);
-        console.log('Request URL:', `${BASE_URL}/customizations/`);
+        console.log('Request URL:', `${API.defaults.baseURL}/customizations/`);
         console.log('Request headers:', {
             'Content-Type': 'application/json',
             'Authorization': `Token ${localStorage.getItem('token')}`

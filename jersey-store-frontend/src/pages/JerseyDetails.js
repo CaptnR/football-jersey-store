@@ -35,6 +35,8 @@ import { API } from '../api/api';
 import EditIcon from '@mui/icons-material/Edit';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { useToast } from '../context/ToastContext';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
 function JerseyDetails() {
     const { id } = useParams();
@@ -68,6 +70,8 @@ function JerseyDetails() {
     // New state for size selection
     const [selectedSize, setSelectedSize] = useState('M');
     const [showAlert, setShowAlert] = useState(false);
+
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     const SIZES = [
         { value: 'XS', label: 'Extra Small' },
@@ -207,6 +211,28 @@ function JerseyDetails() {
         }
     };
 
+    const handlePrevImage = () => {
+        setCurrentImageIndex((prev) => 
+            prev === 0 ? jersey.images.length - 1 : prev - 1
+        );
+    };
+
+    const handleNextImage = () => {
+        setCurrentImageIndex((prev) => 
+            prev === jersey.images.length - 1 ? 0 : prev + 1
+        );
+    };
+
+    const getDisplayImage = () => {
+        if (jersey?.images?.length > 0) {
+            return jersey.images[currentImageIndex].image;
+        }
+        if (jersey?.primary_image) {
+            return jersey.primary_image;
+        }
+        return '/placeholder.jpg';
+    };
+
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -255,28 +281,127 @@ function JerseyDetails() {
                                 )}
 
                                 <Grid container spacing={4}>
-                                    {/* Jersey Image */}
+                                    {/* Image Section */}
                                     <Grid item xs={12} md={6}>
-                                        <Card 
-                                            elevation={0}
-                                            sx={{
-                                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                                backdropFilter: 'blur(8px)',
-                                                border: '1px solid',
-                                                borderColor: 'divider',
-                                            }}
-                                        >
-                                            <CardMedia
-                                                component="img"
-                                                image={jersey.image}
-                                                alt={jersey.player.name}
-                                                sx={{
+                                        <Box sx={{ position: 'relative' }}>
+                                            <img
+                                                src={getDisplayImage()}
+                                                alt={`${jersey?.player?.name}'s Jersey`}
+                                                style={{
+                                                    width: '100%',
                                                     height: 'auto',
-                                                    objectFit: 'contain',
-                                                    p: 4,
+                                                    maxHeight: '500px',
+                                                    objectFit: 'contain'
                                                 }}
                                             />
-                                        </Card>
+                                            {jersey?.images?.length > 1 && (
+                                                <>
+                                                    {/* Left Navigation */}
+                                                    <Box
+                                                        sx={{
+                                                            position: 'absolute',
+                                                            left: 0,
+                                                            top: 0,
+                                                            bottom: 0,
+                                                            width: '60px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            background: 'linear-gradient(to right, rgba(255,255,255,0.8), rgba(255,255,255,0))',
+                                                            zIndex: 2,
+                                                        }}
+                                                    >
+                                                        <IconButton
+                                                            onClick={handlePrevImage}
+                                                            size="large"
+                                                            sx={{
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                                                '&:hover': {
+                                                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                                                },
+                                                            }}
+                                                        >
+                                                            <ArrowBackIosNewIcon />
+                                                        </IconButton>
+                                                    </Box>
+
+                                                    {/* Right Navigation */}
+                                                    <Box
+                                                        sx={{
+                                                            position: 'absolute',
+                                                            right: 0,
+                                                            top: 0,
+                                                            bottom: 0,
+                                                            width: '60px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            background: 'linear-gradient(to left, rgba(255,255,255,0.8), rgba(255,255,255,0))',
+                                                            zIndex: 2,
+                                                        }}
+                                                    >
+                                                        <IconButton
+                                                            onClick={handleNextImage}
+                                                            size="large"
+                                                            sx={{
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                                                '&:hover': {
+                                                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                                                },
+                                                            }}
+                                                        >
+                                                            <ArrowForwardIosIcon />
+                                                        </IconButton>
+                                                    </Box>
+                                                </>
+                                            )}
+                                        </Box>
+
+                                        {/* Thumbnail Navigation */}
+                                        {jersey?.images?.length > 1 && (
+                                            <Box 
+                                                sx={{ 
+                                                    display: 'flex', 
+                                                    gap: 1, 
+                                                    mt: 2, 
+                                                    justifyContent: 'center',
+                                                    overflowX: 'auto',
+                                                    pb: 1
+                                                }}
+                                            >
+                                                {jersey.images.map((img, index) => (
+                                                    <Box
+                                                        key={img.id}
+                                                        onClick={() => setCurrentImageIndex(index)}
+                                                        sx={{
+                                                            width: 60,
+                                                            height: 60,
+                                                            cursor: 'pointer',
+                                                            border: index === currentImageIndex ? '2px solid' : 'none',
+                                                            borderColor: 'primary.main',
+                                                            borderRadius: 1,
+                                                            overflow: 'hidden',
+                                                            flexShrink: 0,
+                                                            transition: 'all 0.2s ease-in-out',
+                                                            '&:hover': {
+                                                                opacity: 0.8,
+                                                                transform: 'scale(1.05)'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <img
+                                                            src={img.image}
+                                                            alt={`Thumbnail ${index + 1}`}
+                                                            style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'cover'
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        )}
                                     </Grid>
 
                                     {/* Jersey Details */}

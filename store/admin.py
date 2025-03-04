@@ -1,9 +1,21 @@
 from django.contrib import admin
-from .models import Team, Player, Jersey, Customization, Sale
+from .models import Team, Player, Jersey, Customization, Sale, JerseyImage
 
 admin.site.register(Team)
 admin.site.register(Player)
-admin.site.register(Jersey)
+
+class JerseyImageInline(admin.TabularInline):
+    model = JerseyImage
+    extra = 1
+    fields = ['image', 'is_primary', 'order']
+
+@admin.register(Jersey)
+class JerseyAdmin(admin.ModelAdmin):
+    list_display = ['player', 'price', 'stock', 'is_low_stock']
+    search_fields = ['player__name', 'player__team__name']
+    list_filter = ['player__team__league']
+    inlines = [JerseyImageInline]
+
 admin.site.register(Customization)
 
 @admin.register(Sale)

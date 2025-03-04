@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Team, Player, Jersey, Customization, Order, Review, Sale, OrderItem
+from .models import Team, Player, Jersey, Customization, Order, Review, Sale, OrderItem, JerseyImage
 from django.db import models
 from .constants import CURRENCY
 
@@ -15,6 +15,11 @@ class PlayerSerializer(serializers.ModelSerializer):
         model = Player
         fields = ['id', 'name', 'team']
 
+class JerseyImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JerseyImage
+        fields = ['id', 'image', 'is_primary', 'order']
+
 class JerseySerializer(serializers.ModelSerializer):
     player = PlayerSerializer()
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -26,13 +31,16 @@ class JerseySerializer(serializers.ModelSerializer):
     is_low_stock = serializers.BooleanField(read_only=True)
     sale_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True, required=False)
     on_sale = serializers.SerializerMethodField()
+    images = JerseyImageSerializer(many=True, read_only=True)
+    primary_image = serializers.SerializerMethodField()
     
     class Meta:
         model = Jersey
         fields = [
-            'id', 'player', 'price', 'currency', 'image', 'team_name', 
-            'league', 'average_rating', 'user_has_purchased', 'stock',
-            'low_stock_threshold', 'is_low_stock', 'sale_price', 'on_sale'
+            'id', 'player', 'price', 'currency', 'images', 'primary_image',
+            'team_name', 'league', 'average_rating', 'user_has_purchased',
+            'stock', 'low_stock_threshold', 'is_low_stock', 'sale_price',
+            'on_sale'
         ]
 
     def to_representation(self, instance):
@@ -70,6 +78,12 @@ class JerseySerializer(serializers.ModelSerializer):
 
     def get_on_sale(self, obj):
         return obj.sale_price is not None
+
+    def get_primary_image(self, obj):
+        try:
+            return obj.primary_image
+        except Exception:
+            return None
 
 class CustomizationSerializer(serializers.ModelSerializer):
     class Meta:

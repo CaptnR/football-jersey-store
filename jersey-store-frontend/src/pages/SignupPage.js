@@ -13,24 +13,37 @@ import {
     Grid,
     Link,
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 
 function SignupPage() {
+    const navigate = useNavigate();
+    const { showToast } = useToast();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSignup = async (event) => {
-        event.preventDefault();
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
         setError('');
-        setSuccess(false);
+
         try {
-            const response = await signupUser({ username, password });
-            console.log('Signup response:', response.data); // Log the response for debugging
-            setSuccess(true);
-        } catch (err) {
-            setError('Signup failed. Username might already exist.');
+            await signupUser({
+                username: username,
+                password: password
+            });
+            
+            showToast('Registration successful! Please login to continue.', 'success');
+            navigate('/login'); // Redirect to login page
+            
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to register');
+            showToast(error.response?.data?.error || 'Failed to register', 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -73,7 +86,7 @@ function SignupPage() {
                         >
                             Sign Up
                         </Typography>
-                        <Box component="form" onSubmit={handleSignup} sx={{ mt: 1, width: '100%' }}>
+                        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
                             <TextField
                                 margin="normal"
                                 required
