@@ -55,31 +55,26 @@ function HomePage() {
     const fetchAllJerseys = async () => {
         setLoading(true);
         try {
-            // Build query parameters
             const params = new URLSearchParams();
             
-            // Add league filter
             if (filters.league) {
                 params.append('player__team__league', filters.league);
             }
             
-            // Add team filter
             if (filters.team) {
                 params.append('player__team__name', filters.team);
             }
             
-            // Add rating filter
             if (filters.minRating > 0) {
                 params.append('min_rating', filters.minRating);
             }
 
-            // Add search query if it exists (from the main search bar)
             if (searchQuery) {
                 params.append('search', searchQuery);
             }
 
-            // Make the API call with filters
             const response = await API.get(`/jerseys/?${params.toString()}`);
+            console.log('Fetched jerseys:', response.data); // Debug log
             setJerseys(response.data);
             setError('');
         } catch (error) {
@@ -413,20 +408,26 @@ function HomePage() {
 
                 {/* Jersey Grid */}
                 <LoadingOverlay loading={loading}>
-                    <Grid container spacing={3}>
-                        {jerseys.map((jersey) => (
-                            <Grid item xs={12} sm={6} md={4} lg={3} key={jersey.id}>
-                                <JerseyCard
-                                    jersey={jersey}
-                                    onAddToCart={handleAddToCart}
-                                    onAddToWishlist={handleAddToWishlist}
-                                    onRemoveFromWishlist={handleRemoveFromWishlist}
-                                    isInWishlist={jersey.isInWishlist}
-                                    requiresAuth={!isAuthenticated}
-                                />
-                            </Grid>
-                        ))}
-                    </Grid>
+                    {error ? (
+                        <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
+                    ) : jerseys.length === 0 ? (
+                        <Alert severity="info" sx={{ mt: 2 }}>No jerseys found</Alert>
+                    ) : (
+                        <Grid container spacing={3}>
+                            {jerseys.map((jersey) => (
+                                <Grid item xs={12} sm={6} md={4} lg={3} key={jersey.id}>
+                                    <JerseyCard
+                                        jersey={jersey}
+                                        onAddToCart={handleAddToCart}
+                                        onAddToWishlist={handleAddToWishlist}
+                                        onRemoveFromWishlist={handleRemoveFromWishlist}
+                                        isInWishlist={wishlistedItems.has(jersey.id)}
+                                        requiresAuth={!isAuthenticated}
+                                    />
+                                </Grid>
+                            ))}
+                        </Grid>
+                    )}
                 </LoadingOverlay>
             </Container>
         </Box>

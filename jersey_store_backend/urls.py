@@ -17,18 +17,9 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path,include,get_resolver
-from store.views import OrderStatusView
+from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('store.urls')),
-    path('api/orders/<int:order_id>/status/', OrderStatusView.as_view(), name='order-status-update'),
-]
-
-print("Loaded URL patterns:")
-for pattern in get_resolver().url_patterns:
-    print(pattern)
-
-if settings.DEBUG:  # Only serve media files in development
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

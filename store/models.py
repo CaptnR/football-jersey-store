@@ -20,10 +20,27 @@ class Player(models.Model):
     def __str__(self):
         return self.name
 
+class JerseyImage(models.Model):
+    jersey = models.ForeignKey('Jersey', related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='jersey_images/')
+    is_primary = models.BooleanField(default=False)
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', '-is_primary']
+
+    def __str__(self):
+        return f"Image for {self.jersey.player.name}'s Jersey"
+
+    def save(self, *args, **kwargs):
+        if self.is_primary:
+            # Set all other images of this jersey to not primary
+            JerseyImage.objects.filter(jersey=self.jersey).exclude(id=self.id).update(is_primary=False)
+        super().save(*args, **kwargs)
+
 class Jersey(models.Model):
     player = models.ForeignKey('Player', on_delete=models.CASCADE)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    image = models.ImageField(upload_to='', blank=True, null=True)
     stock = models.IntegerField(default=0)
     low_stock_threshold = models.IntegerField(default=100)
 
@@ -73,6 +90,19 @@ class Jersey(models.Model):
         else:  # PERCENTAGE
             discount = (float(applicable_sale.discount_value) / 100) * float(self.price)
             return max(0, float(self.price) - discount)
+
+    @property
+    def primary_image(self):
+        try:
+            primary = self.images.filter(is_primary=True).first()
+            if primary:
+                return primary.image.url
+            first_image = self.images.first()
+            if first_image:
+                return first_image.image.url
+            return None  # Return None if no images exist
+        except Exception:
+            return None
 
 class Customization(models.Model):
     JERSEY_TYPE_CHOICES = [

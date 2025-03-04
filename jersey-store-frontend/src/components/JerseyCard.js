@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import {
     Card,
@@ -16,12 +16,17 @@ import {
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { CURRENCY } from '../utils/constants';
 import SizeSelectionDialog from './SizeSelectionDialog';
 
 function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist, isInWishlist, requiresAuth }) {
     const { addToCart } = useContext(CartContext);
+    const navigate = useNavigate();
     const [sizeDialogOpen, setSizeDialogOpen] = useState(false);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const images = jersey?.images || [];
 
     // Add more comprehensive validation
     if (!jersey || typeof jersey !== 'object') { 
@@ -65,9 +70,12 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
         }
     };
 
-    const handleAddToCart = () => {
+    const handleAddToCart = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
         if (requiresAuth) {
-            // Handle auth requirement
+            navigate('/login');
             return;
         }
         setSizeDialogOpen(true);
@@ -75,6 +83,25 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
 
     const handleSizeSelect = (size) => {
         addToCart({ ...jersey, size });
+    };
+
+    const handlePrevImage = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    };
+
+    const handleNextImage = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    };
+
+    const getDisplayImage = () => {
+        if (images && images.length > 0) {
+            return images[currentImageIndex].image;
+        }
+        return '/placeholder.jpg'; // Add a placeholder image to your public folder
     };
 
     return (
@@ -91,7 +118,7 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
                     borderColor: 'divider',
                     position: 'relative',
                     width: '100%',
-                    maxWidth: 345, // Consistent card width
+                    maxWidth: 345,
                     transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
                     '&:hover': {
                         transform: 'translateY(-4px)',
@@ -111,27 +138,14 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
                             px: 4,
                             py: 0.5,
                             zIndex: 1,
-                            width: '140px',  // Fixed width for consistency
+                            width: '140px',
                             textAlign: 'center',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',  // Add shadow for depth
-                            '&::before': {  // Add triangle decoration
-                                content: '""',
-                                position: 'absolute',
-                                left: 0,
-                                top: '100%',
-                                borderStyle: 'solid',
-                                borderWidth: '3px',
-                                borderColor: 'error.dark error.dark transparent transparent'
-                            },
-                            fontWeight: 'bold',
-                            letterSpacing: '1px',
-                            fontSize: '0.875rem'
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                         }}
                     >
                         SALE
                     </Box>
                 )}
-                {/* Wishlist Button */}
                 <IconButton
                     onClick={handleWishlistAction}
                     sx={{
@@ -164,10 +178,10 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
                     to={`/jersey/${jerseyData.id}`}
                     style={{ textDecoration: 'none', color: 'inherit' }}
                 >
-                    <Box sx={{ position: 'relative', pt: '100%' }}>
+                    <Box sx={{ position: 'relative', paddingTop: '100%' }}>
                         <CardMedia
                             component="img"
-                            image={jerseyData.image}
+                            image={getDisplayImage()}
                             alt={`${playerData.name} Jersey`}
                             sx={{
                                 position: 'absolute',
@@ -179,6 +193,65 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
                                 p: 2,
                             }}
                         />
+                        {images.length > 1 && (
+                            <>
+                                <Box
+                                    sx={{
+                                        position: 'absolute',
+                                        left: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: '40px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: 'linear-gradient(to right, rgba(255,255,255,0.8), rgba(255,255,255,0))',
+                                        zIndex: 2,
+                                    }}
+                                >
+                                    <IconButton
+                                        onClick={handlePrevImage}
+                                        size="small"
+                                        sx={{
+                                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                            },
+                                        }}
+                                    >
+                                        <ArrowBackIosNewIcon fontSize="small" />
+                                    </IconButton>
+                                </Box>
+
+                                <Box
+                                    sx={{
+                                        position: 'absolute',
+                                        right: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: '40px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: 'linear-gradient(to left, rgba(255,255,255,0.8), rgba(255,255,255,0))',
+                                        zIndex: 2,
+                                    }}
+                                >
+                                    <IconButton
+                                        onClick={handleNextImage}
+                                        size="small"
+                                        sx={{
+                                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                            },
+                                        }}
+                                    >
+                                        <ArrowForwardIosIcon fontSize="small" />
+                                    </IconButton>
+                                </Box>
+                            </>
+                        )}
                     </Box>
                 </Link>
 

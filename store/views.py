@@ -101,7 +101,8 @@ class JerseyViewSet(viewsets.ModelViewSet):
             'player__team'
         ).prefetch_related(
             'reviews',
-            'wishlist_items'
+            'wishlist_items',
+            'images'
         ).annotate(
             review_count=Count('reviews'),
             avg_rating=Avg('reviews__rating')
