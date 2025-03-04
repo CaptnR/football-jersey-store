@@ -201,46 +201,23 @@ function CheckoutPage() {
         setIsSubmitting(true);
 
         try {
-            // Format cart items based on type (custom or regular)
-            const formattedItems = cartItems.map(item => {
-                if (item.type === 'custom') {
-                    return {
-                        type: 'custom',
-                        jersey_id: item.id,
-                        quantity: item.quantity,
-                        price: item.price,
-                        customization: {
-                            name: item.playerName,
-                            number: item.playerNumber,
-                            primary_color: item.primaryColor,
-                            secondary_color: item.secondaryColor
-                        }
-                    };
-                } else {
-                    return {
-                        type: 'regular',
-                        jersey_id: item.id,
-                        quantity: item.quantity,
-                        price: item.price,
-                        player: item.player
-                    };
-                }
-            });
-
+            // Format the order data
             const orderData = {
-                items: formattedItems,
-                total_price: calculateTotal(),
-                payment: {
-                    name_on_card: paymentData.cardName,
-                    card_number: paymentData.cardNumber,
-                    expiration_date: paymentData.expiryDate,
-                }
+                items: cartItems.map(item => ({
+                    jersey_id: item.id,
+                    quantity: item.quantity,
+                    price: item.price,
+                    size: item.size || 'M',
+                    type: item.type || 'regular',
+                    player_name: item.player?.name || ''
+                })),
+                total_price: calculateTotal()
             };
 
             console.log('Sending order data:', orderData); // Debug log
 
             const response = await API.post('/checkout/', orderData);
-
+            
             if (response.status === 201) {
                 clearCart();
                 setSuccessMessage('Order placed successfully!');
@@ -249,8 +226,9 @@ function CheckoutPage() {
                 }, 2000);
             }
         } catch (error) {
-            console.error('Checkout error:', error.response?.data || error.message);
-            setError(error.response?.data?.error || 'Failed to place order. Please try again.');
+            console.error('Checkout error:', error);
+            const errorMessage = error.response?.data?.error || 'Failed to place order';
+            setError(errorMessage);
         } finally {
             setIsSubmitting(false);
         }
@@ -263,6 +241,7 @@ function CheckoutPage() {
                 number: item.playerNumber || 'No number',
                 price: item.price || 99.99,
                 quantity: item.quantity || 1,
+                size: item.size || 'M',
                 primaryColor: item.primaryColor,
                 secondaryColor: item.secondaryColor
             };
@@ -271,7 +250,8 @@ function CheckoutPage() {
                 name: item.player?.name || 'Regular Jersey',
                 team: item.player?.team?.name || '',
                 price: item.price || 0,
-                quantity: item.quantity || 1
+                quantity: item.quantity || 1,
+                size: item.size || 'M'
             };
         }
     };
@@ -467,7 +447,7 @@ function CheckoutPage() {
                                                 {displayItem.name}
                                             </Typography>
                                             <Typography variant="body2" color="text.secondary">
-                                                Quantity: {displayItem.quantity}
+                                                Quantity: {displayItem.quantity} | Size: {displayItem.size}
                                             </Typography>
                                         </Grid>
                                         <Grid item xs={4}>

@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
-from .models import Team, Player, Jersey, Customization, Order, Payment, Wishlist, Review, Sale
+from .models import Team, Player, Jersey, Customization, Order, Wishlist, Review, Sale, OrderItem
 from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer, ReviewSerializer, AdminJerseySerializer, SaleSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes, action
@@ -21,9 +21,10 @@ from django.http import Http404
 from contextlib import suppress
 from django.core.cache import cache
 from django.db.models import Prefetch
-from django.db.models import Count, Avg, F
+from django.db.models import Count, Avg, F, Q
 import logging
 from django.utils import timezone
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -85,12 +86,14 @@ class PlayerViewSet(ModelViewSet):
     serializer_class = PlayerSerializer
 
 class JerseyViewSet(viewsets.ModelViewSet):
-    queryset = Jersey.objects.all()
     serializer_class = JerseySerializer
     permission_classes = [AllowAny]
     filter_backends = [SearchFilter, DjangoFilterBackend]
     search_fields = ['player__name', 'player__team__name', 'player__team__league']
-    filterset_fields = ['player__team__league', 'player__team__name']
+    filterset_fields = {
+        'player__team__league': ['exact'],
+        'player__team__name': ['exact'],
+    }
 
     def get_queryset(self):
         queryset = Jersey.objects.select_related(
@@ -103,22 +106,51 @@ class JerseyViewSet(viewsets.ModelViewSet):
             review_count=Count('reviews'),
             avg_rating=Avg('reviews__rating')
         )
-        search = self.request.query_params.get('search', '')
-        
-        if search.lower() == 'sale':
-            # Get jerseys that have active sales
-            now = timezone.now()
-            active_sales = Sale.objects.filter(
-                is_active=True,
-                start_date__lte=now,
-                end_date__gte=now
-            )
-            sale_jerseys = []
-            for jersey in queryset:
-                if jersey.sale_price is not None:
-                    sale_jerseys.append(jersey.id)
-            return queryset.filter(id__in=sale_jerseys)
-            
+
+        # Handle rating filter
+        min_rating = self.request.query_params.get('min_rating')
+        if min_rating:
+            try:
+                min_rating = float(min_rating)
+                queryset = queryset.filter(
+                    models.Q(avg_rating__gte=min_rating) | 
+                    models.Q(avg_rating__isnull=True)
+                )
+            except (ValueError, TypeError):
+                pass
+
+        # Handle search
+        search = self.request.query_params.get('search', '').lower()
+        if search:
+            if search == 'sale':
+                now = timezone.now()
+                active_sales = Sale.objects.filter(
+                    is_active=True,
+                    start_date__lte=now,
+                    end_date__gte=now
+                )
+                if active_sales.exists():
+                    sale_conditions = Q()
+                    for sale in active_sales:
+                        if sale.sale_type == 'ALL':
+                            return queryset
+                        elif sale.sale_type == 'PLAYER':
+                            player_ids = [int(id) for id in sale.target_value.split(',') if id]
+                            sale_conditions |= Q(player_id__in=player_ids)
+                        elif sale.sale_type == 'TEAM':
+                            team_ids = [int(id) for id in sale.target_value.split(',') if id]
+                            sale_conditions |= Q(player__team_id__in=team_ids)
+                        elif sale.sale_type == 'LEAGUE':
+                            leagues = sale.target_value.split(',')
+                            sale_conditions |= Q(player__team__league__in=leagues)
+                    queryset = queryset.filter(sale_conditions)
+            else:
+                queryset = queryset.filter(
+                    models.Q(player__name__icontains=search) |
+                    models.Q(player__team__name__icontains=search) |
+                    models.Q(player__team__league__icontains=search)
+                )
+
         return queryset
     
     def retrieve(self, request, *args, **kwargs):
@@ -168,74 +200,61 @@ class CustomizationViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 class CheckoutView(APIView):
-    authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
-            user = request.user
-            cart_items = request.data.get('items', [])
-            total_price = request.data.get('total_price', 0.0)
-            payment_data = request.data.get('payment', {})
+            with transaction.atomic():
+                if not request.data.get('items'):
+                    return Response({
+                        'error': 'No items provided'
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
-            if not cart_items:
-                return Response(
-                    {"error": "Cart items are required"},
-                    status=status.HTTP_400_BAD_REQUEST
+                # Create order
+                order = Order.objects.create(
+                    user=request.user,
+                    total_price=request.data.get('total_price', 0),
+                    status='processing'
                 )
 
-            # Format cart items based on type
-            formatted_items = []
-            for item in cart_items:
-                if item['type'] == 'custom':
-                    formatted_item = {
-                        'type': 'custom',
-                        'jersey_id': item['jersey_id'],
-                        'quantity': item['quantity'],
-                        'price': item['price'],
-                        'customization': item['customization']
-                    }
-                else:
-                    formatted_item = {
-                        'type': 'regular',
-                        'jersey_id': item['jersey_id'],
-                        'quantity': item['quantity'],
-                        'price': item['price'],
-                        'player_name': item['player']['name'] if item.get('player') else 'Unknown'
-                    }
-                formatted_items.append(formatted_item)
+                # Create order items
+                for item in request.data.get('items', []):
+                    try:
+                        # Get the jersey to check its current price
+                        jersey = Jersey.objects.get(id=item['jersey_id'])
+                        # Use sale price if available, otherwise use regular price
+                        price_to_use = jersey.sale_price if jersey.sale_price is not None else jersey.price
 
-            # Create an order with cart items
-            order = Order.objects.create(
-                user=user,
-                total_price=total_price,
-                items=formatted_items,
-                status='processing'
-            )
+                        OrderItem.objects.create(
+                            order=order,
+                            jersey=jersey,
+                            quantity=item['quantity'],
+                            price=price_to_use,  # Use the current price
+                            size=item.get('size', 'M'),
+                            type=item.get('type', 'regular'),
+                            player_name=item.get('player_name', '')
+                        )
+                    except KeyError as e:
+                        raise ValueError(f"Missing required field: {str(e)}")
+                    except Jersey.DoesNotExist:
+                        raise ValueError(f"Jersey with id {item['jersey_id']} not found")
 
-            # Create a payment linked to the order
-            Payment.objects.create(
-                order=order,
-                name_on_card=payment_data.get('name_on_card'),
-                card_number=payment_data.get('card_number'),
-                expiration_date=payment_data.get('expiration_date'),
-            )
+                serializer = OrderSerializer(order)
+                return Response({
+                    'message': 'Order created successfully',
+                    'data': serializer.data
+                }, status=status.HTTP_201_CREATED)
 
-            # Clear the cart after successful order
-            cache.delete(f'cart_{user.id}')
-
+        except ValueError as e:
             return Response({
-                "message": "Order placed successfully!",
-                "order_id": order.id
-            }, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            print(f"Checkout Error: {str(e)}")
-            print(f"Request data: {request.data}")  # Add more detailed logging
-            return Response({
-                "error": str(e)
+                'error': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
-    
+        except Exception as e:
+            logger.error(f"Error creating order: {str(e)}")
+            return Response({
+                'error': 'Failed to create order'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
 # User Order Tracking
 class UserOrderView(APIView):
     permission_classes = [IsAuthenticated]  # Ensure user must be authenticated
@@ -658,15 +677,29 @@ class OrderStatusView(APIView):
             )
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def filter_metadata(request):
-    leagues = Team.objects.values_list('league', flat=True).distinct()
-    teams = Team.objects.values_list('name', flat=True).distinct()
-    
-    return Response({
-        'leagues': list(leagues),
-        'teams': list(teams)
-    })
+    """Return metadata for filters like leagues and teams"""
+    try:
+        # Get unique leagues and teams
+        leagues = Jersey.objects.values_list(
+            'player__team__league', flat=True
+        ).distinct().order_by('player__team__league')
+        
+        teams = Jersey.objects.values_list(
+            'player__team__name', flat=True
+        ).distinct().order_by('player__team__name')
+        
+        return Response({
+            'leagues': list(leagues),
+            'teams': list(teams)
+        })
+    except Exception as e:
+        logger.error(f"Error fetching filter metadata: {str(e)}")
+        return Response(
+            {'error': 'Failed to fetch filter metadata'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer

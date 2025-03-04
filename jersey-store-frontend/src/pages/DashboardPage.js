@@ -17,7 +17,7 @@ import {
     Paper,
     Alert
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 // Add these constants at the top of the file
 const ORDER_STATUSES = {
@@ -133,27 +133,65 @@ function DashboardPage() {
                 Dashboard
             </Typography>
 
-            {/* Recent Orders */}
+            {/* Recent Orders with View All Button */}
             <Box sx={{ mb: 4 }}>
-                <Typography variant="h5" gutterBottom>
-                    Recent Orders
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h5">
+                        Recent Orders
+                    </Typography>
+                    <Button 
+                        component={Link} 
+                        to="/orders" 
+                        variant="outlined" 
+                        color="primary"
+                    >
+                        View All Orders
+                    </Button>
+                </Box>
+                
                 <Grid container spacing={3}>
                     {dashboardData.recent_orders?.map((order) => (
-                        <Grid item xs={12} md={6} key={order.id}>
+                        <Grid item xs={12} sm={6} md={4} key={order.id}>
                             <Card>
                                 <CardContent>
                                     <Typography variant="h6">
                                         Order #{order.id}
                                     </Typography>
-                                    <Typography>
+                                    <Typography color="text.secondary" gutterBottom>
+                                        {new Date(order.created_at).toLocaleDateString()}
+                                    </Typography>
+                                    
+                                    {/* Order Items with Size */}
+                                    {order.items && order.items.map((item, index) => (
+                                        <Box key={index} sx={{ mt: 1, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
+                                            <Typography variant="body2">
+                                                {item.player_name} Jersey
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', gap: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
+                                                <Typography variant="caption">
+                                                    Qty: {item.quantity}
+                                                </Typography>
+                                                <Typography variant="caption">
+                                                    Size: {item.size}
+                                                </Typography>
+                                            </Box>
+                                            {/* Add link to jersey details */}
+                                            <Button 
+                                                component={Link} 
+                                                to={`/jersey/${item.jersey}`} 
+                                                size="small" 
+                                                sx={{ mt: 0.5, fontSize: '0.75rem' }}
+                                            >
+                                                View Jersey
+                                            </Button>
+                                        </Box>
+                                    ))}
+                                    
+                                    <Typography variant="subtitle1" sx={{ mt: 2 }}>
                                         Total: ₹{order.total_price}
                                     </Typography>
-                                    <Typography>
+                                    <Typography variant="body2" color="text.secondary">
                                         Status: {order.status}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        {new Date(order.created_at).toLocaleDateString()}
                                     </Typography>
                                 </CardContent>
                             </Card>
@@ -191,8 +229,11 @@ function DashboardPage() {
                                         ₹{jersey.price}
                                     </Typography>
                                     <Button
-                                        variant="contained"
-                                        onClick={() => navigate(`/jersey/${jersey.id}`)}
+                                        component={Link} 
+                                        to={`/jersey/${jersey.id}`} 
+                                        variant="contained" 
+                                        color="primary" 
+                                        size="small" 
                                         sx={{ mt: 2 }}
                                     >
                                         View Details

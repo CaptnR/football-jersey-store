@@ -118,21 +118,40 @@ function UserOrdersPage() {
                                         <Typography color="text.secondary" gutterBottom>
                                             Placed on: {new Date(order.created_at).toLocaleDateString()}
                                         </Typography>
-                                        <Typography variant="h6" color="primary">
-                                            Total: ₹{order.total_price}
-                                        </Typography>
                                         
-                                        {/* Order Items */}
+                                        {/* Order Items with Size and Jersey Link */}
                                         {order.items && order.items.map((item, index) => (
                                             <Box key={index} sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-                                                <Typography>
-                                                    {item.player_name} Jersey - Quantity: {item.quantity}
+                                                <Typography variant="subtitle1">
+                                                    {item.player_name} Jersey
                                                 </Typography>
-                                                <Typography color="text.secondary">
-                                                    ${item.price} each
-                                                </Typography>
+                                                <Box sx={{ display: 'flex', gap: 2, color: 'text.secondary' }}>
+                                                    <Typography variant="body2">
+                                                        Quantity: {item.quantity}
+                                                    </Typography>
+                                                    <Typography variant="body2">
+                                                        Size: {item.size}
+                                                    </Typography>
+                                                    <Typography variant="body2">
+                                                        ₹{item.price} each
+                                                    </Typography>
+                                                </Box>
+                                                {/* Add link to jersey details */}
+                                                <Button 
+                                                    component={Link} 
+                                                    to={`/jersey/${item.jersey}`} 
+                                                    size="small" 
+                                                    sx={{ mt: 1 }}
+                                                    variant="outlined"
+                                                >
+                                                    View Jersey Details
+                                                </Button>
                                             </Box>
                                         ))}
+                                        
+                                        <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
+                                            Total: ₹{order.total_price}
+                                        </Typography>
                                     </Card>
                                 </Grid>
                             ))}
