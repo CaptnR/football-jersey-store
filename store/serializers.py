@@ -86,6 +86,18 @@ class JerseySerializer(serializers.ModelSerializer):
             return None
 
 class CustomizationSerializer(serializers.ModelSerializer):
+    SIZE_CHOICES = [
+        ('XS', 'Extra Small'),
+        ('S', 'Small'),
+        ('M', 'Medium'),
+        ('L', 'Large'),
+        ('XL', 'Extra Large'),
+        ('XXL', 'Double Extra Large'),
+        ('XXXL', 'Triple Extra Large')
+    ]
+    
+    size = serializers.ChoiceField(choices=SIZE_CHOICES, default='M')
+
     class Meta:
         model = Customization
         fields = [

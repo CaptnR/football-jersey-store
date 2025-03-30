@@ -13,13 +13,20 @@ import {
     CircularProgress,
     Alert,
     Button,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
 } from '@mui/material';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 import CancelIcon from '@mui/icons-material/Cancel';
-import { API } from '../api/api';
+import { API, updateOrderStatus } from '../api/api';
 import LoadingOverlay from '../components/LoadingOverlay';
+import { useToast } from '../context/ToastContext';
 
 const getStatusIcon = (status) => {
     switch (status) {
@@ -47,26 +54,68 @@ const getStatusColor = (status) => {
     }
 };
 
+const STATUS_COLORS = {
+    pending: {
+        color: '#FF9800',
+        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+        borderColor: 'rgba(255, 152, 0, 0.3)',
+    },
+    processing: {
+        color: '#2196F3',
+        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+        borderColor: 'rgba(33, 150, 243, 0.3)',
+    },
+    shipped: {
+        color: '#673AB7',
+        backgroundColor: 'rgba(103, 58, 183, 0.1)',
+        borderColor: 'rgba(103, 58, 183, 0.3)',
+    },
+    delivered: {
+        color: '#4CAF50',
+        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+        borderColor: 'rgba(76, 175, 80, 0.3)',
+    },
+    cancelled: {
+        color: '#F44336',
+        backgroundColor: 'rgba(244, 67, 54, 0.1)',
+        borderColor: 'rgba(244, 67, 54, 0.3)',
+    },
+};
+
 function UserOrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState('');
+    const { showToast } = useToast();
+
+    const fetchOrders = async () => {
+        try {
+            const response = await API.get('/orders/');
+            setOrders(response.data);
+        } catch (error) {
+            setError('Failed to fetch orders');
+            console.error('Error fetching orders:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchOrders();
     }, []);
 
-    const fetchOrders = async () => {
+    const handleCancelOrder = async (orderId) => {
         try {
-            setLoading(true);
-            const response = await API.get('/orders/my_orders/');
-            setOrders(response.data || []); // Ensure we always have an array
+            await updateOrderStatus(orderId, 'cancelled');
+            showToast('Order cancelled successfully', 'success');
+            fetchOrders(); // Refresh orders list
         } catch (error) {
-            console.error('Error fetching orders:', error);
-            setError('Failed to load orders. Please try again later.');
-        } finally {
-            setLoading(false);
+            showToast(error.response?.data?.error || 'Failed to cancel order', 'error');
         }
+    };
+
+    const canCancelOrder = (status) => {
+        return ['pending', 'processing'].includes(status.toLowerCase());
     };
 
     if (loading) {
@@ -98,64 +147,61 @@ function UserOrdersPage() {
                             <Typography>You haven't placed any orders yet.</Typography>
                         </Card>
                     ) : (
-                        <Grid container spacing={3}>
-                            {orders.map((order) => (
-                                <Grid item xs={12} key={order.id}>
-                                    <Card sx={{ p: 3 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                            <Typography variant="h6">
-                                                Order #{order.id}
-                                            </Typography>
-                                            <Chip
-                                                label={order.status}
-                                                color={
-                                                    order.status === 'delivered' ? 'success' :
-                                                    order.status === 'processing' ? 'info' :
-                                                    order.status === 'cancelled' ? 'error' : 'default'
-                                                }
-                                            />
-                                        </Box>
-                                        <Typography color="text.secondary" gutterBottom>
-                                            Placed on: {new Date(order.created_at).toLocaleDateString()}
-                                        </Typography>
-                                        
-                                        {/* Order Items with Size and Jersey Link */}
-                                        {order.items && order.items.map((item, index) => (
-                                            <Box key={index} sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-                                                <Typography variant="subtitle1">
-                                                    {item.player_name} Jersey
-                                                </Typography>
-                                                <Box sx={{ display: 'flex', gap: 2, color: 'text.secondary' }}>
-                                                    <Typography variant="body2">
-                                                        Quantity: {item.quantity}
-                                                    </Typography>
-                                                    <Typography variant="body2">
-                                                        Size: {item.size}
-                                                    </Typography>
-                                                    <Typography variant="body2">
-                                                        ₹{item.price} each
-                                                    </Typography>
-                                                </Box>
-                                                {/* Add link to jersey details */}
-                                                <Button 
-                                                    component={Link} 
-                                                    to={`/jersey/${item.jersey}`} 
-                                                    size="small" 
-                                                    sx={{ mt: 1 }}
-                                                    variant="outlined"
-                                                >
-                                                    View Jersey Details
-                                                </Button>
-                                            </Box>
+                        <Card 
+                            elevation={0}
+                            sx={{ 
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 2,
+                                overflow: 'hidden'
+                            }}
+                        >
+                            <TableContainer>
+                                <Table>
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>Order ID</TableCell>
+                                            <TableCell>Date</TableCell>
+                                            <TableCell>Total</TableCell>
+                                            <TableCell>Status</TableCell>
+                                            <TableCell>Action</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {orders.map((order) => (
+                                            <TableRow key={order.id}>
+                                                <TableCell>#{order.id}</TableCell>
+                                                <TableCell>
+                                                    {new Date(order.created_at).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell>₹{order.total_price}</TableCell>
+                                                <TableCell>
+                                                    <Chip
+                                                        label={order.status.toUpperCase()}
+                                                        sx={{
+                                                            ...STATUS_COLORS[order.status.toLowerCase()],
+                                                            border: '1px solid',
+                                                        }}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    {canCancelOrder(order.status) && (
+                                                        <Button
+                                                            variant="outlined"
+                                                            color="error"
+                                                            size="small"
+                                                            onClick={() => handleCancelOrder(order.id)}
+                                                        >
+                                                            Cancel Order
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                        
-                                        <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
-                                            Total: ₹{order.total_price}
-                                        </Typography>
-                                    </Card>
-                                </Grid>
-                            ))}
-                        </Grid>
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Card>
                     )}
                 </Box>
             </LoadingOverlay>

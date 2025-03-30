@@ -25,6 +25,7 @@ import JerseyDesigns from '../components/JerseyDesigns';
 import JerseyPreview from '../components/JerseyPreview';
 import { CURRENCY, BASE_PRICES } from '../utils/constants';
 import FlipIcon from '@mui/icons-material/Flip';
+import SizeSelector from '../components/SizeSelector';
 
 function JerseyCustomizerPage() {
   const navigate = useNavigate();
@@ -41,6 +42,7 @@ function JerseyCustomizerPage() {
     frontTextType: 'team'
   });
   const [showFront, setShowFront] = useState(false);
+  const [size, setSize] = useState('M');
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -66,7 +68,8 @@ function JerseyCustomizerPage() {
         text: customization.text,
         logo: customization.logo,
         front_text: customization.frontText,
-        front_text_type: customization.frontTextType
+        front_text_type: customization.frontTextType,
+        size: size
       });
 
       addToCart({
@@ -78,6 +81,7 @@ function JerseyCustomizerPage() {
         secondaryColor: customization.secondaryColor,
         frontText: customization.frontText,
         frontTextType: customization.frontTextType,
+        size: size,
         price: BASE_PRICES.customJersey,
         quantity: 1
       });
@@ -275,6 +279,11 @@ function JerseyCustomizerPage() {
                 </Box>
               </Box>
             )}
+
+            <SizeSelector 
+              size={size}
+              onSizeChange={setSize}
+            />
 
             <Divider sx={{ my: 3 }} />
 

@@ -630,20 +630,13 @@ class OrderStatusView(APIView):
         try:
             order = Order.objects.get(id=order_id)
             
-            # Check if the user owns this order or is an admin
+            # Check if user owns this order or is admin
             if not (request.user.is_staff or order.user == request.user):
                 return Response(
                     {'error': 'Not authorized to modify this order'}, 
                     status=status.HTTP_403_FORBIDDEN
                 )
             
-            # Don't allow updating delivered orders
-            if order.status == 'delivered':
-                return Response(
-                    {'error': 'Cannot modify delivered orders'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
             new_status = request.data.get('status')
             
             if not new_status:
@@ -651,13 +644,26 @@ class OrderStatusView(APIView):
                     {'error': 'Status is required'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            # Regular users can only cancel orders
-            if not request.user.is_staff and new_status != 'cancelled':
+
+            # Don't allow modifying delivered orders
+            if order.status == 'delivered':
                 return Response(
-                    {'error': 'Users can only cancel orders'}, 
-                    status=status.HTTP_403_FORBIDDEN
+                    {'error': 'Cannot modify delivered orders'}, 
+                    status=status.HTTP_400_BAD_REQUEST
                 )
+
+            # Regular users can only cancel pending or processing orders
+            if not request.user.is_staff:
+                if new_status != 'cancelled':
+                    return Response(
+                        {'error': 'Users can only cancel orders'}, 
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                if order.status not in ['pending', 'processing']:
+                    return Response(
+                        {'error': 'Can only cancel pending or processing orders'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
             
             # Validate status
             if new_status not in dict(Order.STATUS_CHOICES):
