@@ -30,6 +30,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { adminApi } from '../api/adminApi';
 import { debounce } from 'lodash';
+import { updateOrderStatus } from '../api/api';
 
 const ORDER_STATUSES = {
     PENDING: 'Pending',
@@ -266,13 +267,12 @@ function AdminOrdersPage() {
 
     const handleStatusChange = async (orderId, newStatus) => {
         try {
-            await adminApi.patch(`/orders/${orderId}/status/`, {
-                status: newStatus.toLowerCase()
-            });
-            fetchOrders();
+            await updateOrderStatus(orderId, newStatus);
+            // Refresh orders or update local state
+            fetchOrders(); // or however you're refreshing the orders list
         } catch (error) {
             console.error('Error updating order status:', error);
-            setError('Failed to update order status');
+            // Show error message to user
         }
     };
 

@@ -59,6 +59,11 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
         }
 
         try {
+            if (requiresAuth) {
+                navigate('/login');
+                return;
+            }
+
             if (isInWishlist) {
                 await onRemoveFromWishlist(jersey.id);
             } else {
@@ -66,7 +71,6 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
             }
         } catch (error) {
             console.error('Wishlist action failed:', error.response?.data || error.message);
-            // You might want to show an error message to the user here
         }
     };
 
@@ -153,7 +157,7 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
                         top: 8,
                         right: 8,
                         backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        zIndex: 2,
+                        zIndex: 3,
                         width: 40,
                         height: 40,
                         '&:hover': {

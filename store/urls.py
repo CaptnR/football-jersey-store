@@ -58,3 +58,7 @@ urlpatterns += [
 urlpatterns += [
     path('filter-metadata/', filter_metadata, name='filter-metadata'),
 ]
+
+urlpatterns += [
+    path('orders/<int:order_id>/status/', views.OrderStatusView.as_view(), name='order-status-update'),
+]

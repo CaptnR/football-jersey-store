@@ -241,5 +241,15 @@ export const updateJerseyStock = async (jerseyId, stockData) => {
     }
 };
 
+export const updateOrderStatus = async (orderId, status) => {
+    try {
+        const response = await API.patch(`/orders/${orderId}/status/`, { status });
+        return response.data;
+    } catch (error) {
+        console.error('Error updating order status:', error);
+        throw error;
+    }
+};
+
 export default API;
 
