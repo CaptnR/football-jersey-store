@@ -23,11 +23,14 @@ import {
     TextField,
     InputAdornment,
     IconButton,
-    Alert
+    Alert,
+    InputBase
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import { adminApi } from '../api/adminApi';
 import { debounce } from 'lodash';
+import { updateOrderStatus } from '../api/api';
 
 const ORDER_STATUSES = {
     PENDING: 'Pending',
@@ -45,6 +48,120 @@ const STATUS_COLORS = {
     cancelled: 'error'
 };
 
+// Add this new component for the search bar
+const SearchBar = ({ value, onChange, onSubmit, onClear }) => {
+    const handleKeyPress = (event) => {
+        if (event.key === 'Enter') {
+            onSubmit(event.target.value);
+        }
+    };
+
+    return (
+        <Box
+            sx={{
+                width: '100%',
+                maxWidth: 350,
+                height: 58,
+                backgroundColor: 'white',
+                borderRadius: '24px',
+                border: '1px solid',
+                borderColor: '#e0e0e0',
+                display: 'flex',
+                alignItems: 'center',
+                px: 2,
+                '&:hover': {
+                    borderColor: 'primary.main',
+                    boxShadow: '0 0 0 1px rgba(25, 118, 210, 0.12)',
+                }
+            }}
+        >
+            <SearchIcon 
+                sx={{ 
+                    fontSize: 20,
+                    color: 'text.secondary',
+                    mr: 1.5
+                }}
+            />
+            
+            <Box
+                sx={{
+                    flex: 1,
+                    height: '10px',
+                    borderRadius: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                }}
+            >
+                <InputBase
+                    value={value}
+                    onChange={onChange}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Search Orders"
+                    sx={{
+                        flex: 1,
+                        pl: 1.5,
+                        '& input': {
+                            padding: '8px 0',
+                            fontSize: '14px',
+                            lineHeight: '1',
+                            position: 'relative',
+                            top: '10px',
+                            '&::placeholder': {
+                                color: '#757575',
+                                opacity: 0,
+                                textAlign: 'left',
+                                position: 'fixed',
+                                top: '5px'
+                            },
+                            '&:focus': {
+                                outline: 'none',
+                            },
+                        },
+                        // Remove the default focus outline
+                        '& .MuiInputBase-input:focus': {
+                            outline: 'none',
+                            border: 'none',
+                            boxShadow: 'none',
+                        },
+                        // Remove default borders
+                        '& .MuiInputBase-root': {
+                            border: 'none',
+                            '&:before, &:after': {
+                                display: 'none',
+                            },
+                        },
+                        // Remove focus ring
+                        '&.Mui-focused': {
+                            outline: 'none',
+                            border: 'none',
+                            boxShadow: 'none',
+                        }
+                    }}
+                />
+            </Box>
+
+            {value && (
+                <IconButton
+                    onClick={onClear}
+                    size="small"
+                    sx={{
+                        ml: 1,
+                        p: 0.5,
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        '&:hover': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                        }
+                    }}
+                >
+                    <ClearIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+            )}
+        </Box>
+    );
+};
+
 function AdminOrdersPage() {
     const location = useLocation();
     const [orders, setOrders] = useState([]);
@@ -53,34 +170,16 @@ function AdminOrdersPage() {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [statusFilter, setStatusFilter] = useState(location.state?.filterStatus || 'all');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchInput, setSearchInput] = useState('');
 
-    // Add debounced search function
-    const debouncedSearch = React.useCallback(
-        debounce((searchValue) => {
-            setSearchQuery(searchValue);
-        }, 500),
-        []
-    );
-
-    // Handle search input change
-    const handleSearchChange = (event) => {
-        const { value } = event.target;
-        event.persist();
-        debouncedSearch(value);
-    };
-
-    useEffect(() => {
-        fetchOrders();
-    }, [statusFilter, searchQuery]);
-
-    const fetchOrders = async () => {
+    // Update the fetchOrders function to handle empty search properly
+    const fetchOrders = React.useCallback(async () => {
         try {
             setLoading(true);
             const response = await adminApi.get('/admin/orders/');
             let filteredOrders = response.data;
 
-            // Normalize the status values in the response data
+            // Normalize the status values
             filteredOrders = filteredOrders.map(order => ({
                 ...order,
                 status: order.status.toLowerCase()
@@ -93,9 +192,9 @@ function AdminOrdersPage() {
                 );
             }
 
-            // Apply search filter
-            if (searchQuery.trim()) {
-                const searchTerm = searchQuery.toLowerCase().trim();
+            // Only apply search filter if there's a search term
+            if (searchInput && searchInput.trim()) {
+                const searchTerm = searchInput.toLowerCase().trim();
                 filteredOrders = filteredOrders.filter(
                     order => 
                         order.id.toString().includes(searchTerm) ||
@@ -111,17 +210,69 @@ function AdminOrdersPage() {
         } finally {
             setLoading(false);
         }
+    }, [statusFilter, searchInput]);
+
+    // Create a memoized debounced search function
+    const debouncedSearch = React.useCallback(
+        debounce((value) => {
+            setSearchInput(value);
+            fetchOrders();  // Only fetch after debounce
+        }, 500),
+        [fetchOrders]  // Include fetchOrders in dependencies
+    );
+
+    // Update the search handler to only update local state immediately
+    const handleSearch = (event) => {
+        const value = event.target.value;
+        setSearchInput(value);  // Just update the input value
     };
+
+    const handleSearchSubmit = (value) => {
+        fetchOrders();  // Only fetch when Enter is pressed
+    };
+
+    // Update the clear search handler
+    const handleClearSearch = () => {
+        setSearchInput('');  // Clear the input
+        // Fetch orders without search filter
+        const fetchWithoutSearch = async () => {
+            try {
+                setLoading(true);
+                const response = await adminApi.get('/admin/orders/');
+                let filteredOrders = response.data;
+
+                // Only apply status filter
+                if (statusFilter !== 'all') {
+                    filteredOrders = filteredOrders.filter(
+                        order => order.status === statusFilter.toLowerCase()
+                    );
+                }
+
+                setOrders(filteredOrders);
+                setError(null);
+            } catch (err) {
+                console.error('Error fetching orders:', err);
+                setError('Failed to load orders');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchWithoutSearch();
+    };
+
+    // Update useEffect to only fetch on mount and status filter changes
+    useEffect(() => {
+        fetchOrders();
+    }, [statusFilter]); // Remove fetchOrders from dependencies
 
     const handleStatusChange = async (orderId, newStatus) => {
         try {
-            await adminApi.patch(`/orders/${orderId}/status/`, {
-                status: newStatus.toLowerCase()
-            });
-            fetchOrders();
+            await updateOrderStatus(orderId, newStatus);
+            // Refresh orders or update local state
+            fetchOrders(); // or however you're refreshing the orders list
         } catch (error) {
             console.error('Error updating order status:', error);
-            setError('Failed to update order status');
+            // Show error message to user
         }
     };
 
@@ -147,114 +298,74 @@ function AdminOrdersPage() {
     return (
         <Box sx={{ bgcolor: '#F4F6F8', minHeight: '100vh', py: 4 }}>
             <Container maxWidth="xl">
-                {/* Header Section */}
-                <Box sx={{ 
-                    mb: 4,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                }}>
-                    <Box>
-                        <Typography variant="h4" sx={{ mb: 1, fontWeight: 600 }}>
-                            Orders
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Manage and track all orders
-                        </Typography>
-                    </Box>
+                {/* Header */}
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="h4" sx={{ mb: 1, fontWeight: 600 }}>
+                        Orders Management
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        View and manage all customer orders
+                    </Typography>
                 </Box>
 
-                {/* Filters Card */}
+                {/* Filters Card with Status and Search */}
                 <Card 
                     elevation={0}
                     sx={{ 
                         mb: 3,
+                        p: 2,
                         border: '1px solid',
                         borderColor: 'divider',
                         borderRadius: 2
                     }}
                 >
                     <Box sx={{ 
-                        p: 3,
                         display: 'flex',
-                        justifyContent: 'space-between',
                         alignItems: 'center',
-                        gap: 2
+                        gap: 2,
+                        flexWrap: 'wrap'
                     }}>
-                        <FormControl size="small" sx={{ width: 200 }}>
+                        <FormControl 
+                            size="small" 
+                            sx={{ minWidth: 200 }}
+                        >
                             <InputLabel>Status</InputLabel>
                             <Select
                                 value={statusFilter}
                                 label="Status"
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                sx={{
-                                    height: 40,
-                                    '& .MuiSelect-select': {
-                                        py: 1
-                                    }
-                                }}
                             >
                                 <MenuItem value="all">All Orders</MenuItem>
                                 {Object.entries(ORDER_STATUSES).map(([key, value]) => (
                                     <MenuItem 
                                         key={key} 
                                         value={key.toLowerCase()}
-                                        sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 1
-                                        }}
                                     >
-                                        <Box
-                                            sx={{
-                                                width: 8,
-                                                height: 8,
-                                                borderRadius: '50%',
-                                                bgcolor: STATUS_COLORS[key.toLowerCase()]?.borderColor
-                                            }}
-                                        />
-                                        {value}
+                                        <Box sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 1 
+                                        }}>
+                                            <Box
+                                                sx={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: '50%',
+                                                    bgcolor: STATUS_COLORS[key.toLowerCase()]
+                                                }}
+                                            />
+                                            {value}
+                                        </Box>
                                     </MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
 
-                        <TextField
-                            placeholder="Search by Order ID or Customer"
-                            onChange={handleSearchChange}
-                            sx={{ 
-                                width: 250,
-                                '& .MuiInputBase-root': {
-                                    height: 40,
-                                    padding: 0,
-                                    paddingLeft: 1.5,
-                                    paddingRight: 1.5
-                                },
-                                '& .MuiInputBase-input': {
-                                    padding: '8px 0',
-                                    height: '24px',
-                                    lineHeight: '24px'
-                                }
-                            }}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon 
-                                            color="action" 
-                                            fontSize="small"
-                                            sx={{ ml: -0.5 }}
-                                        />
-                                    </InputAdornment>
-                                ),
-                                sx: {
-                                    fontSize: '0.875rem',
-                                    '& .MuiInputAdornment-root': {
-                                        height: '100%',
-                                        maxHeight: 'none',
-                                        marginRight: 0.5
-                                    }
-                                }
-                            }}
+                        <SearchBar
+                            value={searchInput}
+                            onChange={handleSearch}
+                            onSubmit={handleSearchSubmit}
+                            onClear={handleClearSearch}
                         />
                     </Box>
                 </Card>
@@ -378,6 +489,8 @@ function AdminOrdersPage() {
                             </TableBody>
                         </Table>
                     </TableContainer>
+                    
+                    {/* Pagination */}
                     <Box sx={{ 
                         borderTop: '1px solid',
                         borderColor: 'divider'
@@ -391,30 +504,9 @@ function AdminOrdersPage() {
                             onRowsPerPageChange={handleChangeRowsPerPage}
                             sx={{
                                 '.MuiTablePagination-select': {
-                                    height: '32px',
-                                    paddingTop: '0px',
-                                    paddingBottom: '0px',
-                                    display: 'flex',
-                                    alignItems: 'center'
-                                },
-                                '.MuiTablePagination-selectLabel': {
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    marginBottom: 0
-                                },
-                                '.MuiTablePagination-displayedRows': {
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    marginBottom: 0
-                                },
-                                '.MuiTablePagination-actions': {
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    marginLeft: 2
+                                    height: '32px'
                                 }
                             }}
-                            labelRowsPerPage="Rows per page:"
-                            rowsPerPageOptions={[5, 10, 25, 50]}
                         />
                     </Box>
                 </Card>

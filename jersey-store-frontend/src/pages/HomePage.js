@@ -18,7 +18,8 @@ import {
     Slider,
     Button,
     IconButton,
-    Card
+    Card,
+    CardContent
 } from '@mui/material';
 import JerseyCard from '../components/JerseyCard';
 import { CartContext } from '../context/CartContext';
@@ -42,53 +43,72 @@ function HomePage() {
     const [filters, setFilters] = useState({
         league: '',
         team: '',
-        priceRange: [0, 1000],
+        minRating: 0
     });
-    const [leagues, setLeagues] = useState([]);
-    const [teams, setTeams] = useState([]);
-    const [metadata, setMetadata] = useState(null);
+    const [metadata, setMetadata] = useState({
+        leagues: [],
+        teams: []
+    });
     const isAuthenticated = !!localStorage.getItem('token');
     const [toast, setToast] = useState({ open: false, message: '', severity: 'info' });
 
-    // Add useEffect to watch for search and filter changes
-    useEffect(() => {
-        fetchAllJerseys();
-    }, [searchQuery, filters, isAuthenticated]);
-
     const fetchAllJerseys = async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const [jerseysResponse, wishlistResponse] = await Promise.all([
-                API.get('/jerseys/', {
-                    params: {
-                        search: searchQuery,
-                        min_price: filters.priceRange[0],
-                        max_price: filters.priceRange[1],
-                        league: filters.league,
-                        team: filters.team
-                    }
-                }),
-                isAuthenticated ? API.get('/wishlist/') : Promise.resolve({ data: [] })
-            ]);
-
-            // Create a Set of wishlisted jersey IDs
-            const wishlistedIds = new Set(wishlistResponse.data.map(item => item.id));
+            const params = new URLSearchParams();
             
-            // Add isInWishlist property to each jersey
-            const jerseysWithWishlist = jerseysResponse.data.map(jersey => ({
-                ...jersey,
-                isInWishlist: wishlistedIds.has(jersey.id)
-            }));
+            if (filters.league) {
+                params.append('player__team__league', filters.league);
+            }
+            
+            if (filters.team) {
+                params.append('player__team__name', filters.team);
+            }
+            
+            if (filters.minRating > 0) {
+                params.append('min_rating', filters.minRating);
+            }
 
-            setJerseys(jerseysWithWishlist);
-            setWishlistedItems(wishlistedIds);
+            if (searchQuery) {
+                params.append('search', searchQuery);
+            }
+
+            const response = await API.get(`/jerseys/?${params.toString()}`);
+            console.log('Fetched jerseys:', response.data); // Debug log
+            setJerseys(response.data);
+            setError('');
         } catch (error) {
-            console.error('Error fetching jerseys:', error.response?.data || error.message);
+            console.error('Error fetching jerseys:', error);
             setError('Failed to load jerseys. Please try again later.');
         } finally {
             setLoading(false);
         }
     };
+
+    const fetchFilterMetadata = async () => {
+        try {
+            const response = await API.get('/filter-metadata/');
+            setMetadata(response.data);
+        } catch (error) {
+            console.error('Error fetching metadata:', error);
+        }
+    };
+
+    // Initial data fetch
+    useEffect(() => {
+        fetchAllJerseys();
+        fetchFilterMetadata();
+        
+        // Only fetch wishlist if user is authenticated
+        if (isAuthenticated) {
+            fetchWishlist();
+        }
+    }, []); // Empty dependency array for initial load
+
+    // Fetch when filters change
+    useEffect(() => {
+        fetchAllJerseys();
+    }, [filters]);
 
     const fetchWishlist = async () => {
         try {
@@ -100,41 +120,31 @@ function HomePage() {
         }
     };
 
-    useEffect(() => {
-        fetchAllJerseys();
-        fetchFilterMetadata();
-        
-        // Only fetch wishlist if user is authenticated
-        if (isAuthenticated) {
-            fetchWishlist();
-        }
-    }, []);
-
-    const fetchFilterMetadata = async () => {
-        try {
-            const response = await API.get('/metadata/');
-            setLeagues(response.data.leagues);
-            setTeams(response.data.teams);
-            setMetadata(response.data);
-            setFilters((prevFilters) => ({
-                ...prevFilters,
-                minPrice: response.data.price_range.min,
-                maxPrice: response.data.price_range.max,
-            }));
-        } catch (error) {
-            console.error('Error fetching metadata:', error);
-        }
-    };
-
     const handleSearch = (event) => {
         setSearchQuery(event.target.value);
     };
 
-    const handleFilterChange = (name, value) => {
+    const handleFilterChange = (field) => (event) => {
+        const value = event.target.value;
         setFilters(prev => ({
             ...prev,
-            [name]: value
+            [field]: value
         }));
+    };
+
+    const handleRatingChange = (event, newValue) => {
+        setFilters(prev => ({
+            ...prev,
+            minRating: newValue
+        }));
+    };
+
+    const handleResetFilters = () => {
+        setFilters({
+            league: '',
+            team: '',
+            minRating: 0
+        });
     };
 
     const handleAddToCart = (jersey) => {
@@ -324,66 +334,100 @@ function HomePage() {
 
                 {/* Filter Panel */}
                 {isFilterExpanded && (
-                    <Box sx={{ p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} md={4}>
-                                <FormControl fullWidth>
-                                    <InputLabel>League</InputLabel>
-                                    <Select
-                                        value={filters.league}
-                                        onChange={(e) => handleFilterChange('league', e.target.value)}
+                    <Card sx={{ mb: 4 }}>
+                        <CardContent>
+                            <Grid container spacing={3} alignItems="center">
+                                {/* League Filter */}
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <FormControl fullWidth>
+                                        <InputLabel>League</InputLabel>
+                                        <Select
+                                            value={filters.league}
+                                            onChange={handleFilterChange('league')}
+                                            label="League"
+                                        >
+                                            <MenuItem value="">All Leagues</MenuItem>
+                                            {metadata.leagues.map((league) => (
+                                                <MenuItem key={league} value={league}>
+                                                    {league}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+
+                                {/* Team Filter */}
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <FormControl fullWidth>
+                                        <InputLabel>Team</InputLabel>
+                                        <Select
+                                            value={filters.team}
+                                            onChange={handleFilterChange('team')}
+                                            label="Team"
+                                        >
+                                            <MenuItem value="">All Teams</MenuItem>
+                                            {metadata.teams.map((team) => (
+                                                <MenuItem key={team} value={team}>
+                                                    {team}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+
+                                {/* Rating Filter */}
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <Typography gutterBottom>
+                                        Minimum Rating: {filters.minRating}
+                                    </Typography>
+                                    <Slider
+                                        value={filters.minRating}
+                                        onChange={handleRatingChange}
+                                        min={0}
+                                        max={5}
+                                        step={0.5}
+                                        marks
+                                        valueLabelDisplay="auto"
+                                    />
+                                </Grid>
+
+                                {/* Reset Button */}
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handleResetFilters}
+                                        fullWidth
                                     >
-                                        <MenuItem value="">All Leagues</MenuItem>
-                                        {leagues.map(league => (
-                                            <MenuItem key={league} value={league}>{league}</MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
+                                        Reset Filters
+                                    </Button>
+                                </Grid>
                             </Grid>
-                            <Grid item xs={12} md={4}>
-                                <FormControl fullWidth>
-                                    <InputLabel>Team</InputLabel>
-                                    <Select
-                                        value={filters.team}
-                                        onChange={(e) => handleFilterChange('team', e.target.value)}
-                                    >
-                                        <MenuItem value="">All Teams</MenuItem>
-                                        {teams.map(team => (
-                                            <MenuItem key={team} value={team}>{team}</MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12}>
-                                <Typography gutterBottom>Price Range</Typography>
-                                <Slider
-                                    value={filters.priceRange}
-                                    onChange={(e, newValue) => handleFilterChange('priceRange', newValue)}
-                                    valueLabelDisplay="auto"
-                                    min={0}
-                                    max={1000}
-                                />
-                            </Grid>
-                        </Grid>
-                    </Box>
+                        </CardContent>
+                    </Card>
                 )}
 
                 {/* Jersey Grid */}
                 <LoadingOverlay loading={loading}>
-                    <Grid container spacing={3}>
-                        {jerseys.map((jersey) => (
-                            <Grid item xs={12} sm={6} md={4} lg={3} key={jersey.id}>
-                                <JerseyCard
-                                    jersey={jersey}
-                                    onAddToCart={handleAddToCart}
-                                    onAddToWishlist={handleAddToWishlist}
-                                    onRemoveFromWishlist={handleRemoveFromWishlist}
-                                    isInWishlist={jersey.isInWishlist}
-                                    requiresAuth={!isAuthenticated}
-                                />
-                            </Grid>
-                        ))}
-                    </Grid>
+                    {error ? (
+                        <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
+                    ) : jerseys.length === 0 ? (
+                        <Alert severity="info" sx={{ mt: 2 }}>No jerseys found</Alert>
+                    ) : (
+                        <Grid container spacing={3}>
+                            {jerseys.map((jersey) => (
+                                <Grid item xs={12} sm={6} md={4} lg={3} key={jersey.id}>
+                                    <JerseyCard
+                                        jersey={jersey}
+                                        onAddToCart={handleAddToCart}
+                                        onAddToWishlist={handleAddToWishlist}
+                                        onRemoveFromWishlist={handleRemoveFromWishlist}
+                                        isInWishlist={wishlistedItems.has(jersey.id)}
+                                        requiresAuth={!isAuthenticated}
+                                    />
+                                </Grid>
+                            ))}
+                        </Grid>
+                    )}
                 </LoadingOverlay>
             </Container>
         </Box>

@@ -1,12 +1,10 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-
 export const API = axios.create({
-    baseURL: BASE_URL,
+    baseURL: 'http://localhost:8000/api',  // Make sure this matches your backend URL
     headers: {
         'Content-Type': 'application/json',
-    }
+    },
 });
 
 // Add request interceptor to include token and handle data
@@ -147,7 +145,7 @@ export const saveCustomization = async (data) => {
 
         // Log formatted data before sending
         console.log('Formatted data being sent to backend:', formattedData);
-        console.log('Request URL:', `${BASE_URL}/customizations/`);
+        console.log('Request URL:', `${API.defaults.baseURL}/customizations/`);
         console.log('Request headers:', {
             'Content-Type': 'application/json',
             'Authorization': `Token ${localStorage.getItem('token')}`
@@ -239,6 +237,56 @@ export const updateJerseyStock = async (jerseyId, stockData) => {
         return response.data;
     } catch (error) {
         console.error('Error in updateJerseyStock:', error.response || error);
+        throw error;
+    }
+};
+
+export const updateOrderStatus = async (orderId, status) => {
+    try {
+        const response = await API.patch(`/orders/${orderId}/status/`, { status });
+        return response.data;
+    } catch (error) {
+        console.error('Error updating order status:', error);
+        throw error;
+    }
+};
+
+export const submitReturnRequest = async (orderId, reason) => {
+    try {
+        const response = await API.post(`/orders/${orderId}/return/`, { reason });
+        return response.data;
+    } catch (error) {
+        console.error('Error submitting return request:', error);
+        throw error;
+    }
+};
+
+export const handleReturnApproval = async (returnId, action) => {
+    try {
+        const response = await API.patch(`/returns/${returnId}/approve/`, { action });
+        return response.data;
+    } catch (error) {
+        console.error('Error handling return approval:', error);
+        throw error;
+    }
+};
+
+export const fetchPendingReturns = async () => {
+    try {
+        const response = await API.get('/returns/pending/');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching pending returns:', error);
+        throw error;
+    }
+};
+
+export const bulkDeleteJerseys = async (jerseyIds) => {
+    try {
+        const response = await API.post('/jerseys/bulk_delete/', { jersey_ids: jerseyIds });
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting jerseys:', error);
         throw error;
     }
 };

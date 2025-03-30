@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 import {
     Container,
     Box,
@@ -23,25 +24,39 @@ import {
     Paper,
     Select,
     MenuItem,
-    Chip
+    Chip,
+    TableContainer,
+    Table,
+    TableHead,
+    TableBody,
+    TableRow,
+    TableCell,
+    CardHeader,
+    DialogContentText,
+    Checkbox
 } from '@mui/material';
 import {
     AttachMoney,
     ShoppingCart,
     TrendingUp,
-    LocalShipping
+    LocalShipping,
+    Delete as DeleteIcon
 } from '@mui/icons-material';
 import { fetchAdminDashboard, updateJerseyStock, adminApi } from '../api/adminApi';
+import { API } from '../api/api';
 
 const ORDER_STATUSES = {
     PENDING: 'Pending',
     PROCESSING: 'Processing',
     SHIPPED: 'Shipped',
     DELIVERED: 'Delivered',
+    RETURN_PENDING: 'Return Pending',
+    RETURN_APPROVED: 'Return Approved',
+    RETURN_REJECTED: 'Return Rejected',
+    RETURN_COMPLETED: 'Return Completed',
     CANCELLED: 'Cancelled'
 };
 
-// Update STATUS_COLORS to use lowercase keys
 const STATUS_COLORS = {
     pending: {
         bg: '#FFF4E5',
@@ -67,6 +82,26 @@ const STATUS_COLORS = {
         bg: '#FEEBEE',
         color: '#932338',
         borderColor: '#EF5350'
+    },
+    return_pending: {
+        bg: '#FFF3E0',
+        color: '#E65100',
+        borderColor: '#FFB74D'
+    },
+    return_approved: {
+        bg: '#E8F5E9',
+        color: '#2E7D32',
+        borderColor: '#81C784'
+    },
+    return_rejected: {
+        bg: '#FFEBEE',
+        color: '#C62828',
+        borderColor: '#E57373'
+    },
+    return_completed: {
+        bg: '#E0F2F1',
+        color: '#00695C',
+        borderColor: '#4DB6AC'
     }
 };
 
@@ -123,46 +158,39 @@ function StatCard({ title, value, icon, trend }) {
 function OrderStatusDialog({ open, onClose, order, onUpdateStatus }) {
     const [newStatus, setNewStatus] = useState(order?.status || '');
 
+    const handleSubmit = () => {
+        // Convert status to lowercase before sending to backend
+        onUpdateStatus(order.id, newStatus.toLowerCase());
+    };
+
+    useEffect(() => {
+        // Set initial status when order changes
+        if (order) {
+            setNewStatus(order.status.toLowerCase());
+        }
+    }, [order]);
+
     return (
-        <Dialog 
-            open={open} 
-            onClose={onClose}
-            PaperProps={{
-                sx: {
-                    borderRadius: 2,
-                    minWidth: 360
-                }
-            }}
-        >
-            <DialogTitle sx={{ pb: 1 }}>
-                <Typography variant="h6">Update Order Status</Typography>
-                <Typography variant="caption" color="text.secondary">
-                    Order #{order?.id}
-                </Typography>
-            </DialogTitle>
+        <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+            <DialogTitle>Update Order Status</DialogTitle>
             <DialogContent>
                 <Box sx={{ mt: 2 }}>
                     <Select
                         fullWidth
                         value={newStatus}
                         onChange={(e) => setNewStatus(e.target.value)}
-                        sx={{
-                            '& .MuiSelect-select': {
-                                p: 1.5
-                            }
-                        }}
                     >
-                        {Object.values(ORDER_STATUSES).map((status) => (
+                        {Object.entries(ORDER_STATUSES).map(([key, label]) => (
                             <MenuItem 
-                                key={status} 
-                                value={status.toLowerCase()}
+                                key={key} 
+                                value={key.toLowerCase()}
                                 sx={{
                                     py: 1.5,
                                     px: 2,
                                     '&.Mui-selected': {
-                                        backgroundColor: STATUS_COLORS[status.toLowerCase()]?.bg,
+                                        backgroundColor: STATUS_COLORS[key.toLowerCase()]?.bg,
                                         '&:hover': {
-                                            backgroundColor: STATUS_COLORS[status.toLowerCase()]?.bg
+                                            backgroundColor: STATUS_COLORS[key.toLowerCase()]?.bg
                                         }
                                     }
                                 }}
@@ -173,11 +201,11 @@ function OrderStatusDialog({ open, onClose, order, onUpdateStatus }) {
                                             width: 8,
                                             height: 8,
                                             borderRadius: '50%',
-                                            bgcolor: STATUS_COLORS[status.toLowerCase()]?.borderColor,
+                                            bgcolor: STATUS_COLORS[key.toLowerCase()]?.borderColor,
                                             mr: 1
                                         }}
                                     />
-                                    {status}
+                                    {label}
                                 </Box>
                             </MenuItem>
                         ))}
@@ -189,11 +217,11 @@ function OrderStatusDialog({ open, onClose, order, onUpdateStatus }) {
                     Cancel
                 </Button>
                 <Button 
-                    onClick={() => onUpdateStatus(order.id, newStatus)}
+                    onClick={handleSubmit}
                     variant="contained"
-                    disabled={newStatus === order?.status}
+                    disabled={!newStatus || newStatus === order?.status}
                 >
-                    Update Status
+                    Update
                 </Button>
             </DialogActions>
         </Dialog>
@@ -202,6 +230,7 @@ function OrderStatusDialog({ open, onClose, order, onUpdateStatus }) {
 
 function AdminDashboardPage() {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -210,6 +239,9 @@ function AdminDashboardPage() {
     const [newStock, setNewStock] = useState('');
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
+    const [returnRequests, setReturnRequests] = useState([]);
+    const [selectedJerseys, setSelectedJerseys] = useState([]);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
     const checkAdminStatus = async () => {
         try {
@@ -240,6 +272,7 @@ function AdminDashboardPage() {
             const data = await fetchAdminDashboard();
             setDashboardData(data);
             setError('');
+            fetchReturnRequests();
         } catch (err) {
             console.error('Dashboard fetch error:', err);
             setError('Failed to load dashboard data');
@@ -268,12 +301,49 @@ function AdminDashboardPage() {
 
     const handleUpdateOrderStatus = async (orderId, newStatus) => {
         try {
-            await adminApi.patch(`/orders/${orderId}/status/`, { status: newStatus });
+            // Ensure status is lowercase
+            const status = newStatus.toLowerCase();
+            await adminApi.patch(`/orders/${orderId}/status/`, { status });
+            showToast('Order status updated successfully', 'success');
             fetchData();
             setIsOrderDialogOpen(false);
         } catch (error) {
             console.error('Error updating order status:', error);
-            setError('Failed to update order status');
+            showToast(error.response?.data?.error || 'Failed to update order status', 'error');
+        }
+    };
+
+    const fetchReturnRequests = async () => {
+        try {
+            const response = await API.get('/returns/pending/');
+            setReturnRequests(response.data);
+        } catch (error) {
+            console.error('Error fetching return requests:', error);
+            showToast('Failed to fetch return requests', 'error');
+        }
+    };
+
+    const handleReturnAction = async (returnId, action) => {
+        try {
+            await API.patch(`/returns/${returnId}/approve/`, { action });
+            showToast(`Return request ${action}ed successfully`, 'success');
+            fetchData();
+        } catch (error) {
+            showToast(error.response?.data?.error || `Failed to ${action} return`, 'error');
+        }
+    };
+
+    const handleDeleteJerseys = async () => {
+        try {
+            await API.post('/jerseys/bulk_delete/', {
+                jersey_ids: selectedJerseys
+            });
+            showToast('Jerseys deleted successfully', 'success');
+            setDeleteDialogOpen(false);
+            setSelectedJerseys([]);
+            fetchData();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Failed to delete jerseys', 'error');
         }
     };
 
@@ -542,11 +612,34 @@ function AdminDashboardPage() {
                                         >
                                             {low_stock_jerseys.length} jerseys are running low on stock!
                                         </Alert>
+                                        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                                            <Button
+                                                variant="contained"
+                                                color="error"
+                                                startIcon={<DeleteIcon />}
+                                                onClick={() => setDeleteDialogOpen(true)}
+                                                disabled={selectedJerseys.length === 0}
+                                            >
+                                                Delete Selected Jerseys
+                                            </Button>
+                                        </Box>
                                         <List sx={{ px: 0 }}>
                                             {low_stock_jerseys.map((jersey) => (
                                                 <ListItem
                                                     key={jersey.id}
                                                     divider
+                                                    secondaryAction={
+                                                        <Checkbox
+                                                            checked={selectedJerseys.includes(jersey.id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedJerseys([...selectedJerseys, jersey.id]);
+                                                                } else {
+                                                                    setSelectedJerseys(selectedJerseys.filter(id => id !== jersey.id));
+                                                                }
+                                                            }}
+                                                        />
+                                                    }
                                                     sx={{ 
                                                         px: 3,
                                                         py: 2,
@@ -636,6 +729,99 @@ function AdminDashboardPage() {
                         order={selectedOrder}
                         onUpdateStatus={handleUpdateOrderStatus}
                     />
+
+                    {/* Return Requests Section */}
+                    <Card sx={{ mt: 4 }}>
+                        <CardHeader 
+                            title="Return Requests" 
+                            sx={{ 
+                                borderBottom: 1, 
+                                borderColor: 'divider',
+                                '& .MuiCardHeader-title': {
+                                    fontSize: '1.25rem',
+                                    fontWeight: 600
+                                }
+                            }}
+                        />
+                        <TableContainer>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Order ID</TableCell>
+                                        <TableCell>Customer</TableCell>
+                                        <TableCell>Return Reason</TableCell>
+                                        <TableCell>Request Date</TableCell>
+                                        <TableCell>Actions</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {returnRequests.length > 0 ? (
+                                        returnRequests.map((returnRequest) => (
+                                            <TableRow key={returnRequest.id}>
+                                                <TableCell>#{returnRequest.order}</TableCell>
+                                                <TableCell>{returnRequest.user}</TableCell>
+                                                <TableCell>{returnRequest.reason}</TableCell>
+                                                <TableCell>
+                                                    {new Date(returnRequest.created_at).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        variant="contained"
+                                                        color="success"
+                                                        size="small"
+                                                        onClick={() => handleReturnAction(returnRequest.id, 'approve')}
+                                                        sx={{ mr: 1 }}
+                                                    >
+                                                        Approve
+                                                    </Button>
+                                                    <Button
+                                                        variant="contained"
+                                                        color="error"
+                                                        size="small"
+                                                        onClick={() => handleReturnAction(returnRequest.id, 'reject')}
+                                                    >
+                                                        Reject
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={5} align="center">
+                                                <Typography color="textSecondary">
+                                                    No pending return requests
+                                                </Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Card>
+
+                    {/* Confirmation Dialog */}
+                    <Dialog
+                        open={deleteDialogOpen}
+                        onClose={() => setDeleteDialogOpen(false)}
+                    >
+                        <DialogTitle>Confirm Delete</DialogTitle>
+                        <DialogContent>
+                            <DialogContentText>
+                                Are you sure you want to delete the selected jerseys? This action cannot be undone.
+                                All related orders, reviews, and wishlist items will also be deleted.
+                            </DialogContentText>
+                        </DialogContent>
+                        <DialogActions>
+                            <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+                            <Button 
+                                onClick={handleDeleteJerseys} 
+                                color="error" 
+                                variant="contained"
+                            >
+                                Delete
+                            </Button>
+                        </DialogActions>
+                    </Dialog>
                 </Box>
             </Container>
         </Box>

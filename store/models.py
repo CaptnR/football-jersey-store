@@ -20,10 +20,27 @@ class Player(models.Model):
     def __str__(self):
         return self.name
 
+class JerseyImage(models.Model):
+    jersey = models.ForeignKey('Jersey', related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='jersey_images/')
+    is_primary = models.BooleanField(default=False)
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', '-is_primary']
+
+    def __str__(self):
+        return f"Image for {self.jersey.player.name}'s Jersey"
+
+    def save(self, *args, **kwargs):
+        if self.is_primary:
+            # Set all other images of this jersey to not primary
+            JerseyImage.objects.filter(jersey=self.jersey).exclude(id=self.id).update(is_primary=False)
+        super().save(*args, **kwargs)
+
 class Jersey(models.Model):
     player = models.ForeignKey('Player', on_delete=models.CASCADE)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    image = models.ImageField(upload_to='', blank=True, null=True)
     stock = models.IntegerField(default=0)
     low_stock_threshold = models.IntegerField(default=100)
 
@@ -69,10 +86,23 @@ class Jersey(models.Model):
             return None
             
         if applicable_sale.discount_type == 'FLAT':
-            return max(0, self.price - applicable_sale.discount_value)
+            return max(0, float(self.price) - float(applicable_sale.discount_value))
         else:  # PERCENTAGE
-            discount = (applicable_sale.discount_value / 100) * self.price
-            return max(0, self.price - discount)
+            discount = (float(applicable_sale.discount_value) / 100) * float(self.price)
+            return max(0, float(self.price) - discount)
+
+    @property
+    def primary_image(self):
+        try:
+            primary = self.images.filter(is_primary=True).first()
+            if primary:
+                return primary.image.url
+            first_image = self.images.first()
+            if first_image:
+                return first_image.image.url
+            return None  # Return None if no images exist
+        except Exception:
+            return None
 
 class Customization(models.Model):
     JERSEY_TYPE_CHOICES = [
@@ -96,39 +126,60 @@ class Customization(models.Model):
             return f"Customization of {self.jersey.player.name} jersey by {self.user.username}"
         return f"Custom jersey by {self.user.username}"
     
+class OrderItem(models.Model):
+    order = models.ForeignKey('Order', related_name='items', on_delete=models.CASCADE)
+    jersey = models.ForeignKey(Jersey, on_delete=models.PROTECT)
+    quantity = models.IntegerField(default=1)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    size = models.CharField(
+        max_length=4,
+        choices=[
+            ('XS', 'Extra Small'),
+            ('S', 'Small'),
+            ('M', 'Medium'),
+            ('L', 'Large'),
+            ('XL', 'Extra Large'),
+            ('XXL', 'Double Extra Large'),
+            ('XXXL', 'Triple Extra Large')
+        ],
+        default='M'
+    )
+    type = models.CharField(max_length=10, choices=[
+        ('regular', 'Regular'),
+        ('custom', 'Custom')
+    ], default='regular')
+    player_name = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return f"{self.quantity}x {self.jersey.player.name}'s Jersey (Size: {self.size})"
+
 class Order(models.Model):
     STATUS_CHOICES = [
+        ('pending', 'Pending'),
         ('processing', 'Processing'),
         ('shipped', 'Shipped'),
         ('delivered', 'Delivered'),
-        ('cancelled', 'Cancelled'),
+        ('return_pending', 'Return Pending'),
+        ('return_approved', 'Return Approved'),
+        ('return_rejected', 'Return Rejected'),
+        ('return_completed', 'Return Completed'),
+        ('cancelled', 'Cancelled')
     ]
-    
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    items = models.JSONField()  # This stores the cart items
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Order {self.id} by {self.user.username}"
-    
+        return f"Order #{self.id} by {self.user.username}"
+
     def save(self, *args, **kwargs):
         # Ensure status is always lowercase before saving
         if self.status:
             self.status = self.status.lower()
         super().save(*args, **kwargs)
-
-class Payment(models.Model):
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="payment")  # Link to the order
-    name_on_card = models.CharField(max_length=255)  # Cardholder name
-    card_number = models.CharField(max_length=16)  # Card number (dummy, not encrypted for this example)
-    expiration_date = models.CharField(max_length=5)  # MM/YY
-    created_at = models.DateTimeField(auto_now_add=True)  # Timestamp
-
-    def __str__(self):
-        return f"Payment for Order {self.order.id}"
 
 class Wishlist(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -179,4 +230,25 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"{self.get_sale_type_display()} Sale - {self.target_value}"
+
+class Return(models.Model):
+    RETURN_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed')
+    ]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='returns')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=RETURN_STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Return for Order #{self.order.id} - {self.status}"
+
+    class Meta:
+        ordering = ['-created_at']
 

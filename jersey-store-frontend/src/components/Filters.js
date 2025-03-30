@@ -131,7 +131,7 @@ function Filters({ onFilter, metadata }) {
                     {/* Price Range */}
                     <Box sx={{ mb: 2 }}>
                         <Typography gutterBottom>
-                            Price Range: ${selectedFilters.minPrice} - ${selectedFilters.maxPrice}
+                            Price Range: ₹{selectedFilters.minPrice} - ₹{selectedFilters.maxPrice}
                         </Typography>
                         <Slider
                             name="minPrice"
