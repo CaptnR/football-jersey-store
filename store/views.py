@@ -4,8 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
-from .models import Team, Player, Jersey, Customization, Order, Wishlist, Review, Sale, OrderItem
-from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer, ReviewSerializer, AdminJerseySerializer, SaleSerializer
+from .models import Team, Player, Jersey, Customization, Order, Wishlist, Review, Sale, OrderItem, Return
+from .serializers import TeamSerializer, PlayerSerializer, JerseySerializer, CustomizationSerializer, UserOrderSerializer, AdminOrderSerializer, OrderSerializer, ReviewSerializer, AdminJerseySerializer, SaleSerializer, ReturnSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes, action
 from django.contrib.auth.models import User
@@ -25,6 +25,7 @@ from django.db.models import Count, Avg, F, Q
 import logging
 from django.utils import timezone
 from django.db import transaction
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +170,51 @@ class JerseyViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+
+    def destroy(self, request, *args, **kwargs):
+        jersey = self.get_object()
+        try:
+            with transaction.atomic():
+                # Delete related order items first
+                OrderItem.objects.filter(jersey=jersey).delete()
+                # Delete related wishlist items
+                Wishlist.objects.filter(jersey=jersey).delete()
+                # Delete related reviews
+                Review.objects.filter(jersey=jersey).delete()
+                # Delete the jersey itself
+                jersey.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to delete jersey: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['post'])
+    def bulk_delete(self, request):
+        jersey_ids = request.data.get('jersey_ids', [])
+        if not jersey_ids:
+            return Response(
+                {'error': 'No jerseys specified for deletion'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                # Delete related order items first
+                OrderItem.objects.filter(jersey_id__in=jersey_ids).delete()
+                # Delete related wishlist items
+                Wishlist.objects.filter(jersey_id__in=jersey_ids).delete()
+                # Delete related reviews
+                Review.objects.filter(jersey_id__in=jersey_ids).delete()
+                # Delete the jerseys
+                Jersey.objects.filter(id__in=jersey_ids).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to delete jerseys: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class CustomizationViewSet(viewsets.ModelViewSet):
     serializer_class = CustomizationSerializer
@@ -804,4 +850,102 @@ class SaleViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
+        return Response(serializer.data)
+
+class OrderReturnView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, order_id):
+        try:
+            order = Order.objects.get(id=order_id)
+
+            # Check if user owns this order
+            if order.user != request.user:
+                return Response(
+                    {'error': 'Not authorized to return this order'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Check if order is delivered
+            if order.status != 'delivered':
+                return Response(
+                    {'error': 'Only delivered orders can be returned'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check if order is within 7 days of delivery
+            delivery_date = order.updated_at
+            if timezone.now() - delivery_date > timedelta(days=7):
+                return Response(
+                    {'error': 'Orders can only be returned within 7 days of delivery'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check if return reason is provided
+            reason = request.data.get('reason')
+            if not reason:
+                return Response(
+                    {'error': 'Return reason is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create return request
+            serializer = ReturnSerializer(
+                data={'order': order.id, 'reason': reason},
+                context={'request': request}
+            )
+            
+            if serializer.is_valid():
+                serializer.save()
+                order.status = 'return_pending'
+                order.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Order.DoesNotExist:
+            return Response(
+                {'error': 'Order not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class ReturnApprovalView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, return_id):
+        try:
+            return_request = Return.objects.get(id=return_id)
+            action = request.data.get('action')
+
+            if action not in ['approve', 'reject']:
+                return Response(
+                    {'error': 'Invalid action. Must be either "approve" or "reject"'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            with transaction.atomic():
+                if action == 'approve':
+                    return_request.status = 'approved'
+                    return_request.order.status = 'return_approved'
+                else:
+                    return_request.status = 'rejected'
+                    return_request.order.status = 'return_rejected'
+
+                return_request.save()
+                return_request.order.save()
+
+            return Response(ReturnSerializer(return_request).data)
+
+        except Return.DoesNotExist:
+            return Response(
+                {'error': 'Return request not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class PendingReturnsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        returns = Return.objects.filter(status='pending').select_related('order', 'user')
+        serializer = ReturnSerializer(returns, many=True)
         return Response(serializer.data)

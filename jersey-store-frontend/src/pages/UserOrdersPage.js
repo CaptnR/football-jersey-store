@@ -27,6 +27,11 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import { API, updateOrderStatus } from '../api/api';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { useToast } from '../context/ToastContext';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
 
 const getStatusIcon = (status) => {
     switch (status) {
@@ -82,11 +87,46 @@ const STATUS_COLORS = {
     },
 };
 
+function ReturnDialog({ open, onClose, onSubmit }) {
+    const [reason, setReason] = useState('');
+    
+    const handleSubmit = () => {
+        onSubmit(reason);
+        setReason('');
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>Return Order</DialogTitle>
+            <DialogContent>
+                <TextField
+                    autoFocus
+                    margin="dense"
+                    label="Reason for Return"
+                    fullWidth
+                    multiline
+                    rows={4}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                />
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>Cancel</Button>
+                <Button onClick={handleSubmit} color="primary" disabled={!reason.trim()}>
+                    Submit Return Request
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+}
+
 function UserOrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const { showToast } = useToast();
+    const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState(null);
 
     const fetchOrders = async () => {
         try {
@@ -114,8 +154,26 @@ function UserOrdersPage() {
         }
     };
 
+    const handleReturnOrder = async (reason) => {
+        try {
+            await API.post(`/orders/${selectedOrderId}/return/`, { reason });
+            showToast('Return request submitted successfully', 'success');
+            setReturnDialogOpen(false);
+            fetchOrders();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Failed to submit return request', 'error');
+        }
+    };
+
     const canCancelOrder = (status) => {
         return ['pending', 'processing'].includes(status.toLowerCase());
+    };
+
+    const canReturnOrder = (order) => {
+        if (order.status !== 'delivered') return false;
+        const deliveryDate = new Date(order.updated_at);
+        const daysSinceDelivery = (new Date() - deliveryDate) / (1000 * 60 * 60 * 24);
+        return daysSinceDelivery <= 7;
     };
 
     if (loading) {
@@ -191,8 +249,22 @@ function UserOrdersPage() {
                                                             color="error"
                                                             size="small"
                                                             onClick={() => handleCancelOrder(order.id)}
+                                                            sx={{ mr: 1 }}
                                                         >
                                                             Cancel Order
+                                                        </Button>
+                                                    )}
+                                                    {canReturnOrder(order) && (
+                                                        <Button
+                                                            variant="outlined"
+                                                            color="primary"
+                                                            size="small"
+                                                            onClick={() => {
+                                                                setSelectedOrderId(order.id);
+                                                                setReturnDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            Return Order
                                                         </Button>
                                                     )}
                                                 </TableCell>
@@ -205,6 +277,12 @@ function UserOrdersPage() {
                     )}
                 </Box>
             </LoadingOverlay>
+
+            <ReturnDialog
+                open={returnDialogOpen}
+                onClose={() => setReturnDialogOpen(false)}
+                onSubmit={handleReturnOrder}
+            />
         </Container>
     );
 }

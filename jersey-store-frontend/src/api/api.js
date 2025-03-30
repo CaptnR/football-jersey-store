@@ -251,5 +251,45 @@ export const updateOrderStatus = async (orderId, status) => {
     }
 };
 
+export const submitReturnRequest = async (orderId, reason) => {
+    try {
+        const response = await API.post(`/orders/${orderId}/return/`, { reason });
+        return response.data;
+    } catch (error) {
+        console.error('Error submitting return request:', error);
+        throw error;
+    }
+};
+
+export const handleReturnApproval = async (returnId, action) => {
+    try {
+        const response = await API.patch(`/returns/${returnId}/approve/`, { action });
+        return response.data;
+    } catch (error) {
+        console.error('Error handling return approval:', error);
+        throw error;
+    }
+};
+
+export const fetchPendingReturns = async () => {
+    try {
+        const response = await API.get('/returns/pending/');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching pending returns:', error);
+        throw error;
+    }
+};
+
+export const bulkDeleteJerseys = async (jerseyIds) => {
+    try {
+        const response = await API.post('/jerseys/bulk_delete/', { jersey_ids: jerseyIds });
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting jerseys:', error);
+        throw error;
+    }
+};
+
 export default API;
 

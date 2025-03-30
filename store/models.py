@@ -159,6 +159,10 @@ class Order(models.Model):
         ('processing', 'Processing'),
         ('shipped', 'Shipped'),
         ('delivered', 'Delivered'),
+        ('return_pending', 'Return Pending'),
+        ('return_approved', 'Return Approved'),
+        ('return_rejected', 'Return Rejected'),
+        ('return_completed', 'Return Completed'),
         ('cancelled', 'Cancelled')
     ]
 
@@ -226,4 +230,25 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"{self.get_sale_type_display()} Sale - {self.target_value}"
+
+class Return(models.Model):
+    RETURN_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed')
+    ]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='returns')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=RETURN_STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Return for Order #{self.order.id} - {self.status}"
+
+    class Meta:
+        ordering = ['-created_at']
 

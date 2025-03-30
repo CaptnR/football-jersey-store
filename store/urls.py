@@ -62,3 +62,15 @@ urlpatterns += [
 urlpatterns += [
     path('orders/<int:order_id>/status/', views.OrderStatusView.as_view(), name='order-status-update'),
 ]
+
+urlpatterns += [
+    path('orders/<int:order_id>/return/', views.OrderReturnView.as_view(), name='order-return'),
+]
+
+urlpatterns += [
+    path('returns/<int:return_id>/approve/', views.ReturnApprovalView.as_view(), name='return-approval'),
+]
+
+urlpatterns += [
+    path('returns/pending/', views.PendingReturnsView.as_view(), name='pending-returns'),
+]

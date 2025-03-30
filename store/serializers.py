@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Team, Player, Jersey, Customization, Order, Review, Sale, OrderItem, JerseyImage
+from .models import Team, Player, Jersey, Customization, Order, Review, Sale, OrderItem, JerseyImage, Return
 from django.db import models
 from .constants import CURRENCY
 
@@ -173,3 +173,16 @@ class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
         fields = '__all__'
+
+class ReturnSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()
+    order_details = OrderSerializer(source='order', read_only=True)
+
+    class Meta:
+        model = Return
+        fields = ['id', 'order', 'user', 'reason', 'status', 'created_at', 'order_details']
+        read_only_fields = ['user', 'status']
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
