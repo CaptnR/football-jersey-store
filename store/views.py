@@ -88,73 +88,18 @@ class PlayerViewSet(ModelViewSet):
 
 class JerseyViewSet(viewsets.ModelViewSet):
     serializer_class = JerseySerializer
-    permission_classes = [AllowAny]
-    filter_backends = [SearchFilter, DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['player__name', 'player__team__name', 'player__team__league']
-    filterset_fields = {
-        'player__team__league': ['exact'],
-        'player__team__name': ['exact'],
-    }
+    filterset_fields = ['player__team__league', 'player__team']
 
     def get_queryset(self):
-        queryset = Jersey.objects.select_related(
+        return Jersey.objects.select_related(
             'player', 
             'player__team'
         ).prefetch_related(
-            'reviews',
-            'wishlist_items',
             'images'
-        ).annotate(
-            review_count=Count('reviews'),
-            avg_rating=Avg('reviews__rating')
-        )
+        ).all()
 
-        # Handle rating filter
-        min_rating = self.request.query_params.get('min_rating')
-        if min_rating:
-            try:
-                min_rating = float(min_rating)
-                queryset = queryset.filter(
-                    models.Q(avg_rating__gte=min_rating) | 
-                    models.Q(avg_rating__isnull=True)
-                )
-            except (ValueError, TypeError):
-                pass
-
-        # Handle search
-        search = self.request.query_params.get('search', '').lower()
-        if search:
-            if search == 'sale':
-                now = timezone.now()
-                active_sales = Sale.objects.filter(
-                    is_active=True,
-                    start_date__lte=now,
-                    end_date__gte=now
-                )
-                if active_sales.exists():
-                    sale_conditions = Q()
-                    for sale in active_sales:
-                        if sale.sale_type == 'ALL':
-                            return queryset
-                        elif sale.sale_type == 'PLAYER':
-                            player_ids = [int(id) for id in sale.target_value.split(',') if id]
-                            sale_conditions |= Q(player_id__in=player_ids)
-                        elif sale.sale_type == 'TEAM':
-                            team_ids = [int(id) for id in sale.target_value.split(',') if id]
-                            sale_conditions |= Q(player__team_id__in=team_ids)
-                        elif sale.sale_type == 'LEAGUE':
-                            leagues = sale.target_value.split(',')
-                            sale_conditions |= Q(player__team__league__in=leagues)
-                    queryset = queryset.filter(sale_conditions)
-            else:
-                queryset = queryset.filter(
-                    models.Q(player__name__icontains=search) |
-                    models.Q(player__team__name__icontains=search) |
-                    models.Q(player__team__league__icontains=search)
-                )
-
-        return queryset
-    
     def retrieve(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
@@ -175,14 +120,28 @@ class JerseyViewSet(viewsets.ModelViewSet):
         jersey = self.get_object()
         try:
             with transaction.atomic():
-                # Delete related order items first
+                # Delete all orders that contain only this jersey
+                orders_to_delete = Order.objects.filter(
+                    id__in=OrderItem.objects.filter(jersey=jersey)
+                    .values('order')
+                    .annotate(count=Count('order'))
+                    .filter(count=1)
+                    .values_list('order', flat=True)
+                )
+                orders_to_delete.delete()
+
+                # For orders with multiple items, just delete the item containing this jersey
                 OrderItem.objects.filter(jersey=jersey).delete()
+                
                 # Delete related wishlist items
                 Wishlist.objects.filter(jersey=jersey).delete()
+                
                 # Delete related reviews
                 Review.objects.filter(jersey=jersey).delete()
+                
                 # Delete the jersey itself
                 jersey.delete()
+                
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response(
@@ -201,14 +160,28 @@ class JerseyViewSet(viewsets.ModelViewSet):
         
         try:
             with transaction.atomic():
-                # Delete related order items first
+                # Delete orders that only contain these jerseys
+                orders_to_delete = Order.objects.filter(
+                    id__in=OrderItem.objects.filter(jersey_id__in=jersey_ids)
+                    .values('order')
+                    .annotate(count=Count('order'))
+                    .filter(count=1)
+                    .values_list('order', flat=True)
+                )
+                orders_to_delete.delete()
+
+                # For orders with multiple items, just delete the items containing these jerseys
                 OrderItem.objects.filter(jersey_id__in=jersey_ids).delete()
+                
                 # Delete related wishlist items
                 Wishlist.objects.filter(jersey_id__in=jersey_ids).delete()
+                
                 # Delete related reviews
                 Review.objects.filter(jersey_id__in=jersey_ids).delete()
+                
                 # Delete the jerseys
                 Jersey.objects.filter(id__in=jersey_ids).delete()
+                
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response(

@@ -27,6 +27,9 @@ function CartPage() {
     const navigate = useNavigate();
     const { showToast } = useToast();
 
+    // Add this console log
+    console.log('Cart Items:', cartItems);
+
     const items = (Array.isArray(cartItems) && cartItems) || [];
 
     const calculateTotal = () => {
@@ -119,12 +122,30 @@ function CartPage() {
                                         >
                                             <Grid container spacing={2} alignItems="center">
                                                 <Grid item xs={3}>
-                                                    <CardMedia
-                                                        component="img"
-                                                        image={item.image}
-                                                        alt={item.player?.name}
-                                                        sx={{ borderRadius: 1 }}
-                                                    />
+                                                    <Box
+                                                        sx={{
+                                                            position: 'relative',
+                                                            width: '100%',
+                                                            height: '200px',
+                                                            bgcolor: 'background.paper',
+                                                            borderRadius: 1,
+                                                            overflow: 'hidden'
+                                                        }}
+                                                    >
+                                                        <CardMedia
+                                                            component="img"
+                                                            image={
+                                                                (item.images && item.images.length > 0 && item.images[0].image) ||
+                                                                '/placeholder-jersey.png'
+                                                            }
+                                                            alt={`${item.player?.name}'s Jersey`}
+                                                            sx={{ 
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'contain'
+                                                            }}
+                                                        />
+                                                    </Box>
                                                 </Grid>
                                                 <Grid item xs={9}>
                                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>

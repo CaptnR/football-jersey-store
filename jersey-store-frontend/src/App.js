@@ -14,7 +14,6 @@ import UserOrdersPage from './pages/UserOrdersPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import WishlistPage from './pages/WishlistPage';
-import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from '@mui/material/styles';
 import { theme } from './theme/theme';
@@ -26,6 +25,7 @@ import AdminSalesPage from './pages/AdminSalesPage';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
 
 function PrivateRoute({ children }) {
     const isAuthenticated = !!localStorage.getItem('token');

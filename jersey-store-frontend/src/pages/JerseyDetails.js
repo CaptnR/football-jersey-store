@@ -180,15 +180,17 @@ function JerseyDetails() {
     };
 
     const handleAddToCart = () => {
+        console.log('Adding to cart:', jersey);
         if (!jersey) return;
 
         const itemToAdd = {
             ...jersey,
-            size: selectedSize
+            size: selectedSize,
+            quantity: 1
         };
         
         addToCart(itemToAdd);
-        setShowAlert(true);
+        showToast('Added to cart successfully', 'success');
     };
 
     const handleSizeChange = (event) => {

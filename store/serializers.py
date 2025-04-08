@@ -29,18 +29,18 @@ class JerseySerializer(serializers.ModelSerializer):
     average_rating = serializers.SerializerMethodField()
     user_has_purchased = serializers.SerializerMethodField()
     is_low_stock = serializers.BooleanField(read_only=True)
-    sale_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True, required=False)
-    on_sale = serializers.SerializerMethodField()
     images = JerseyImageSerializer(many=True, read_only=True)
     primary_image = serializers.SerializerMethodField()
-    
+    sale_price = serializers.SerializerMethodField()
+    on_sale = serializers.SerializerMethodField()
+
     class Meta:
         model = Jersey
         fields = [
-            'id', 'player', 'price', 'currency', 'images', 'primary_image',
+            'id', 'player', 'number', 'price', 'currency', 'description',
+            'stock', 'low_stock_threshold', 'images', 'primary_image',
             'team_name', 'league', 'average_rating', 'user_has_purchased',
-            'stock', 'low_stock_threshold', 'is_low_stock', 'sale_price',
-            'on_sale'
+            'is_low_stock', 'sale_price', 'on_sale'
         ]
 
     def to_representation(self, instance):
@@ -66,24 +66,33 @@ class JerseySerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             try:
-                return Order.objects.filter(
-                    user=request.user,
-                    status='delivered',
-                    items__contains=[{'jersey_id': obj.id}]  # Check in the JSON field
+                return OrderItem.objects.filter(
+                    order__user=request.user,
+                    order__status='delivered',
+                    jersey=obj
                 ).exists()
             except Exception as e:
                 print(f"Error checking purchase status: {e}")
                 return False
         return False
 
+    def get_primary_image(self, obj):
+        primary_image = obj.primary_image
+        if primary_image:
+            return {
+                'id': primary_image.id,
+                'image': {
+                    'url': primary_image.image.url
+                },
+                'is_primary': primary_image.is_primary
+            }
+        return None
+
+    def get_sale_price(self, obj):
+        return obj.sale_price
+
     def get_on_sale(self, obj):
         return obj.sale_price is not None
-
-    def get_primary_image(self, obj):
-        try:
-            return obj.primary_image
-        except Exception:
-            return None
 
 class CustomizationSerializer(serializers.ModelSerializer):
     SIZE_CHOICES = [

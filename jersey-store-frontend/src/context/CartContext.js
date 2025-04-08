@@ -6,70 +6,56 @@ export const CartContext = createContext();
 // Cart Provider Component
 export const CartProvider = ({ children }) => {
     const [cartItems, setCartItems] = useState(() => {
-        try {
-            const savedCart = localStorage.getItem('cart');
-            return savedCart ? JSON.parse(savedCart) : [];
-        } catch (error) {
-            console.error('Error loading cart from localStorage:', error);
-            return [];
-        }
+        // Initialize cart from localStorage if available
+        const savedCart = localStorage.getItem('cart');
+        return savedCart ? JSON.parse(savedCart) : [];
     });
+    const [loading, setLoading] = useState(false);
 
+    // Save cart to localStorage whenever it changes
     useEffect(() => {
-        try {
-            localStorage.setItem('cart', JSON.stringify(cartItems));
-        } catch (error) {
-            console.error('Error saving cart to localStorage:', error);
-        }
+        localStorage.setItem('cart', JSON.stringify(cartItems));
     }, [cartItems]);
 
     const addToCart = (item) => {
-        setCartItems(prevCart => {
-            const existingItem = prevCart.find(i => 
+        console.log('Adding item to cart:', item); // Debug log
+        setCartItems(prevItems => {
+            const existingItem = prevItems.find(i => 
                 i.id === item.id && i.size === item.size
             );
 
-            // Determine the correct price to use
-            const priceToUse = item.sale_price || item.price;
-
             if (existingItem) {
-                return prevCart.map(cartItem =>
-                    cartItem.id === item.id && cartItem.size === item.size
-                        ? { 
-                            ...cartItem, 
-                            quantity: cartItem.quantity + 1,
-                            price: priceToUse // Update price in case it changed
-                        }
-                        : cartItem
+                return prevItems.map(i =>
+                    i.id === item.id && i.size === item.size
+                        ? { ...i, quantity: i.quantity + (item.quantity || 1) }
+                        : i
                 );
             }
 
-            return [...prevCart, { 
-                ...item, 
-                quantity: 1,
-                price: priceToUse,
-                size: item.size || 'M'
-            }];
+            // Make sure we're storing all the necessary data
+            const newItem = {
+                ...item,
+                quantity: item.quantity || 1,
+                primary_image: item.primary_image,
+                images: item.images
+            };
+            console.log('New item being added:', newItem); // Debug log
+            return [...prevItems, newItem];
         });
     };
 
-    const removeFromCart = (jerseyId) => {
-        setCartItems(prevItems => {
-            // Ensure prevItems is an array
-            const items = Array.isArray(prevItems) ? prevItems : [];
-            return items.filter(item => item.id !== jerseyId);
-        });
+    const removeFromCart = (itemId) => {
+        setCartItems(prevItems => prevItems.filter(item => item.id !== itemId));
     };
 
-    const updateQuantity = (jerseyId, quantity) => {
-        if (quantity < 1) return;
-        setCartItems(prevItems => {
-            // Ensure prevItems is an array
-            const items = Array.isArray(prevItems) ? prevItems : [];
-            return items.map(item =>
-                item.id === jerseyId ? { ...item, quantity } : item
-            );
-        });
+    const updateQuantity = (itemId, newQuantity) => {
+        setCartItems(prevItems =>
+            prevItems.map(item =>
+                item.id === itemId
+                    ? { ...item, quantity: newQuantity }
+                    : item
+            )
+        );
     };
 
     const calculateTotal = () => {
@@ -82,7 +68,6 @@ export const CartProvider = ({ children }) => {
 
     const clearCart = () => {
         setCartItems([]);
-        localStorage.removeItem('cart');
     };
 
     return (
@@ -92,7 +77,9 @@ export const CartProvider = ({ children }) => {
             removeFromCart,
             updateQuantity,
             calculateTotal,
-            clearCart
+            clearCart,
+            loading,
+            setLoading
         }}>
             {children}
         </CartContext.Provider>

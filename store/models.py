@@ -39,16 +39,24 @@ class JerseyImage(models.Model):
         super().save(*args, **kwargs)
 
 class Jersey(models.Model):
-    player = models.ForeignKey('Player', on_delete=models.CASCADE)
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    number = models.IntegerField(default=0)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField(blank=True, default='')
     stock = models.IntegerField(default=0)
-    low_stock_threshold = models.IntegerField(default=100)
+    low_stock_threshold = models.IntegerField(default=10)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
         verbose_name_plural = "Jerseys"
 
     def __str__(self):
-        return f"{self.player.name}'s Jersey - {CURRENCY['symbol']}{self.price}"
+        return f"{self.player.name}'s Jersey"
+
+    @property
+    def primary_image(self):
+        return self.images.filter(is_primary=True).first() or self.images.first()
 
     @property
     def is_low_stock(self):
@@ -91,19 +99,6 @@ class Jersey(models.Model):
             discount = (float(applicable_sale.discount_value) / 100) * float(self.price)
             return max(0, float(self.price) - discount)
 
-    @property
-    def primary_image(self):
-        try:
-            primary = self.images.filter(is_primary=True).first()
-            if primary:
-                return primary.image.url
-            first_image = self.images.first()
-            if first_image:
-                return first_image.image.url
-            return None  # Return None if no images exist
-        except Exception:
-            return None
-
 class Customization(models.Model):
     JERSEY_TYPE_CHOICES = [
         ('custom', 'Custom Jersey'),
@@ -125,33 +120,6 @@ class Customization(models.Model):
         if self.jersey:
             return f"Customization of {self.jersey.player.name} jersey by {self.user.username}"
         return f"Custom jersey by {self.user.username}"
-    
-class OrderItem(models.Model):
-    order = models.ForeignKey('Order', related_name='items', on_delete=models.CASCADE)
-    jersey = models.ForeignKey(Jersey, on_delete=models.PROTECT)
-    quantity = models.IntegerField(default=1)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    size = models.CharField(
-        max_length=4,
-        choices=[
-            ('XS', 'Extra Small'),
-            ('S', 'Small'),
-            ('M', 'Medium'),
-            ('L', 'Large'),
-            ('XL', 'Extra Large'),
-            ('XXL', 'Double Extra Large'),
-            ('XXXL', 'Triple Extra Large')
-        ],
-        default='M'
-    )
-    type = models.CharField(max_length=10, choices=[
-        ('regular', 'Regular'),
-        ('custom', 'Custom')
-    ], default='regular')
-    player_name = models.CharField(max_length=100, blank=True)
-
-    def __str__(self):
-        return f"{self.quantity}x {self.jersey.player.name}'s Jersey (Size: {self.size})"
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -181,9 +149,22 @@ class Order(models.Model):
             self.status = self.status.lower()
         super().save(*args, **kwargs)
 
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    jersey = models.ForeignKey(Jersey, on_delete=models.SET_NULL, null=True)
+    quantity = models.IntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    size = models.CharField(max_length=10)
+    type = models.CharField(max_length=20, default='regular')
+    player_name = models.CharField(max_length=100, null=True, blank=True)
+
+    def __str__(self):
+        jersey_name = self.jersey.player.name if self.jersey else self.player_name
+        return f"{self.quantity}x {jersey_name}'s Jersey (Size: {self.size})"
+
 class Wishlist(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE, related_name='wishlist_items')
+    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -195,13 +176,13 @@ class Wishlist(models.Model):
 
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE, related_name='reviews')
+    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE)
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'jersey')  # Ensure one review per user per jersey
+        unique_together = ('user', 'jersey')
 
     def __str__(self):
         return f"{self.user.username}'s review of {self.jersey.player.name} jersey"
