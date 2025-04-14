@@ -38,21 +38,24 @@ function LoginPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
         setError('');
 
         try {
-            // Log the form data being sent
-            console.log('Submitting form data:', formData);
-
-            if (!formData.username || !formData.password) {
-                setError('Username and password are required');
-                return;
-            }
-
-            await login(formData);
-            navigate('/');
+            const response = await login(formData);
+            
+            // Login function in AuthContext now handles token storage
+            showToast('Login successful!', 'success');
+            
+            // If there's a redirect path, use it, otherwise go to home
+            const redirectPath = location.state?.from?.pathname || '/';
+            navigate(redirectPath);
+            
         } catch (error) {
-            setError(error.response?.data?.error || 'Login failed');
+            setError(error.response?.data?.error || 'Failed to login');
+            showToast(error.response?.data?.error || 'Failed to login', 'error');
+        } finally {
+            setLoading(false);
         }
     };
 

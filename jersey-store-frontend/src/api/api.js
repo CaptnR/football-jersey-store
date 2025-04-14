@@ -10,15 +10,9 @@ export const API = axios.create({
 // Add request interceptor to include token and handle data
 API.interceptors.request.use(
     (config) => {
-        // Log outgoing requests (without sensitive data)
-        console.log('Making request to:', config.url, {
-            ...config.data,
-            password: config.data?.password ? '***' : undefined
-        });
-        
         const token = localStorage.getItem('token');
         if (token) {
-            config.headers.Authorization = `Token ${token}`;
+            config.headers.Authorization = `Token ${token}`; // Make sure "Token" prefix matches your backend expectation
         }
         return config;
     },
@@ -28,23 +22,14 @@ API.interceptors.request.use(
     }
 );
 
-// Add response interceptor to handle common errors
+// Update the response interceptor
 API.interceptors.response.use(
-    (response) => {
-        console.log('Response received:', response.data);
-        return response;
-    },
+    (response) => response,
     (error) => {
-        console.error('API Error:', {
-            url: error.config?.url,
-            method: error.config?.method,
-            status: error.response?.status,
-            data: error.response?.data,
-            message: error.message
-        });
-        
         if (error.response?.status === 401) {
+            // Clear auth data and redirect to login
             localStorage.removeItem('token');
+            localStorage.removeItem('username');
             window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -55,6 +40,9 @@ API.interceptors.response.use(
 export const loginUser = async (data) => {
     try {
         const response = await API.post('/login/', data);
+        // Store both token and username
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('username', data.username);
         return response.data;
     } catch (error) {
         console.error('Login error:', error);
@@ -287,6 +275,31 @@ export const bulkDeleteJerseys = async (jerseyIds) => {
         return response.data;
     } catch (error) {
         console.error('Error deleting jerseys:', error);
+        throw error;
+    }
+};
+
+export const logoutUser = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+};
+
+export const updateReview = async (jerseyId, reviewId, data) => {
+    try {
+        const response = await API.put(`/jerseys/${jerseyId}/reviews/${reviewId}/`, data);
+        return response.data;
+    } catch (error) {
+        console.error('Error updating review:', error);
+        throw error;
+    }
+};
+
+export const deleteReview = async (jerseyId, reviewId) => {
+    try {
+        const response = await API.delete(`/jerseys/${jerseyId}/reviews/${reviewId}/`);
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting review:', error);
         throw error;
     }
 };

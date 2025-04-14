@@ -27,6 +27,10 @@ import {
     Select,
     MenuItem,
     Snackbar,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -37,6 +41,9 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import { useToast } from '../context/ToastContext';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import RateReviewIcon from '@mui/icons-material/RateReview';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SizeSelector from '../components/SizeSelector';
 
 function JerseyDetails() {
     const { id } = useParams();
@@ -72,6 +79,15 @@ function JerseyDetails() {
     const [showAlert, setShowAlert] = useState(false);
 
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    const [openReviewDialog, setOpenReviewDialog] = useState(false);
+    const [reviewRating, setReviewRating] = useState(0);
+    const [reviewComment, setReviewComment] = useState('');
+    const [userHasPurchased, setUserHasPurchased] = useState(false);
+    const [userHasReviewed, setUserHasReviewed] = useState(false);
+
+    // New state for editing review
+    const [editingReviewId, setEditingReviewId] = useState(null);
 
     const SIZES = [
         { value: 'XS', label: 'Extra Small' },
@@ -141,41 +157,52 @@ function JerseyDetails() {
         }
     };
 
-    const handleSubmitReview = async (e) => {
-        e.preventDefault();
+    const handleEditReview = (review) => {
+        setReviewRating(review.rating);
+        setReviewComment(review.comment);
+        setEditingReviewId(review.id);
+        setOpenReviewDialog(true);
+    };
+
+    const handleDeleteReview = async (reviewId) => {
+        if (window.confirm('Are you sure you want to delete this review?')) {
+            try {
+                await API.delete(`/jerseys/${id}/reviews/${reviewId}/`);
+                showToast('Review deleted successfully', 'success');
+                fetchJerseyDetails();
+            } catch (error) {
+                showToast(error.response?.data?.error || 'Failed to delete review', 'error');
+            }
+        }
+    };
+
+    const handleSubmitReview = async () => {
         try {
             const reviewData = {
-                rating: userRating,
-                comment: comment
+                rating: parseInt(reviewRating), // Ensure rating is an integer
+                comment: reviewComment || '', // Ensure comment is not null
+                jersey: parseInt(id) // Include the jersey ID
             };
 
-            if (isEditing && !userReview) {
-                setError('No review to edit');
-                return;
+            if (editingReviewId) {
+                await API.put(`/jerseys/${id}/reviews/${editingReviewId}/`, reviewData);
+            } else {
+                await API.post(`/jerseys/${id}/reviews/`, reviewData);
             }
 
-            const response = isEditing
-                ? await API.put(`/jerseys/${id}/reviews/${userReview.id}/`, reviewData)
-                : await API.post(`/jerseys/${id}/reviews/`, reviewData);
-
-            // Refresh reviews after submission
-            const updatedReviewsRes = await API.get(`/jerseys/${id}/reviews/`);
-            const updatedReviews = updatedReviewsRes.data;
-            setReviews(updatedReviews);
-            
-            // Update user's review status
-            const newUserReview = updatedReviews.find(review => review.is_users_review);
-            setUserReview(newUserReview);
-            setIsEditing(false);
-            setCanReview(false);
-            
-            setSuccessMessage(isEditing ? 'Review updated successfully!' : 'Review submitted successfully!');
-            setTimeout(() => setSuccessMessage(''), 3000);
-            showToast(isEditing ? 'Review updated successfully' : 'Review submitted successfully', 'success');
+            showToast(`Review ${editingReviewId ? 'updated' : 'submitted'} successfully`, 'success');
+            setOpenReviewDialog(false);
+            setEditingReviewId(null);
+            setReviewRating(0);
+            setReviewComment('');
+            fetchJerseyDetails();
         } catch (error) {
-            console.error('Error with review:', error.response?.data);
-            setError(error.response?.data?.error || 'Failed to submit review');
-            showToast(error.response?.data?.error || 'Failed to submit review', 'error');
+            console.error('Review error:', error.response?.data || error);
+            showToast(
+                error.response?.data?.error || 
+                `Failed to ${editingReviewId ? 'update' : 'submit'} review`, 
+                'error'
+            );
         }
     };
 
@@ -234,6 +261,37 @@ function JerseyDetails() {
         }
         return '/placeholder.jpg';
     };
+
+    const fetchJerseyDetails = async () => {
+        try {
+            setLoading(true);
+            const response = await API.get(`/jerseys/${id}/`);
+            setJersey(response.data);
+            setUserHasPurchased(response.data.user_has_purchased);
+            
+            // Fetch reviews
+            const reviewsResponse = await API.get(`/jerseys/${id}/reviews/`);
+            const reviews = reviewsResponse.data;
+            setJersey(prev => ({
+                ...prev,
+                reviews: reviews
+            }));
+            
+            // Check if user has already reviewed
+            const username = localStorage.getItem('username');
+            setUserHasReviewed(reviews.some(review => review.user_name === username));
+            
+        } catch (error) {
+            console.error('Error fetching jersey details:', error);
+            showToast('Failed to load jersey details', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchJerseyDetails();
+    }, [id]);
 
     if (loading) {
         return (
@@ -483,12 +541,92 @@ function JerseyDetails() {
                                                 Reviews
                                             </Typography>
 
-                                            {isAuthenticated ? (
-                                                <ReviewSection jerseyId={id} />
-                                            ) : (
-                                                <Alert severity="info" sx={{ mt: 4 }}>
-                                                    Please log in to view and submit reviews
-                                                </Alert>
+                                            <Alert severity="info" sx={{ mb: 3 }}>
+                                                Only verified purchasers can leave reviews
+                                            </Alert>
+
+                                            {/* Reviews List */}
+                                            {jersey?.reviews?.map((review) => (
+                                                <Card 
+                                                    key={review.id}
+                                                    sx={{ 
+                                                        mb: 2,
+                                                        p: 2,
+                                                        backgroundColor: 'background.paper',
+                                                        border: '1px solid',
+                                                        borderColor: 'divider',
+                                                        borderRadius: 2
+                                                    }}
+                                                >
+                                                    <Box sx={{ 
+                                                        display: 'flex', 
+                                                        justifyContent: 'space-between', 
+                                                        alignItems: 'flex-start',
+                                                        width: '100%'
+                                                    }}>
+                                                        <Box sx={{ flex: 1 }}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                                                <Rating 
+                                                                    value={review.rating} 
+                                                                    readOnly 
+                                                                    precision={1}
+                                                                    size="small"
+                                                                />
+                                                                <Typography variant="body2" sx={{ ml: 2, color: 'text.secondary' }}>
+                                                                    by {review.user_name}
+                                                                </Typography>
+                                                                {review.is_edited && (
+                                                                    <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                                                                        (edited)
+                                                                    </Typography>
+                                                                )}
+                                                            </Box>
+                                                            <Typography variant="body1">{review.comment}</Typography>
+                                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                                                {new Date(review.created_at).toLocaleDateString()}
+                                                            </Typography>
+                                                        </Box>
+                                                        {console.log('Review username:', review.user_name)}
+                                                        {console.log('Local storage username:', localStorage.getItem('username'))}
+                                                        {review.user_name === localStorage.getItem('username') && (
+                                                            <Box sx={{ ml: 2, display: 'flex' }}>
+                                                                <IconButton 
+                                                                    size="small" 
+                                                                    onClick={() => handleEditReview(review)}
+                                                                    sx={{ mr: 1 }}
+                                                                    color="primary"
+                                                                >
+                                                                    <EditIcon fontSize="small" />
+                                                                </IconButton>
+                                                                <IconButton 
+                                                                    size="small" 
+                                                                    onClick={() => handleDeleteReview(review.id)}
+                                                                    color="error"
+                                                                >
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Box>
+                                                        )}
+                                                    </Box>
+                                                </Card>
+                                            ))}
+
+                                            {jersey?.reviews?.length === 0 && (
+                                                <Typography color="text.secondary" sx={{ mb: 3 }}>
+                                                    No reviews yet
+                                                </Typography>
+                                            )}
+
+                                            {/* Review Button */}
+                                            {userHasPurchased && !userHasReviewed && (
+                                                <Button
+                                                    variant="contained"
+                                                    onClick={() => setOpenReviewDialog(true)}
+                                                    startIcon={<RateReviewIcon />}
+                                                    sx={{ mt: 2 }}
+                                                >
+                                                    Write a Review
+                                                </Button>
                                             )}
                                         </Box>
                                     </Grid>
@@ -514,6 +652,90 @@ function JerseyDetails() {
                     Added to cart successfully!
                 </Alert>
             </Snackbar>
+
+            {/* Review Dialog */}
+            <Dialog 
+                open={openReviewDialog} 
+                onClose={() => {
+                    setOpenReviewDialog(false);
+                    setEditingReviewId(null);
+                    setReviewRating(0);
+                    setReviewComment('');
+                }}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle>
+                    {editingReviewId ? 'Edit Review' : 'Write a Review'}
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{ py: 2 }}>
+                        <Typography gutterBottom>Rating</Typography>
+                        <Rating
+                            value={reviewRating}
+                            onChange={(event, newValue) => {
+                                setReviewRating(newValue);
+                            }}
+                            precision={1}
+                            size="large"
+                        />
+                        <TextField
+                            autoFocus
+                            margin="dense"
+                            label="Your Review"
+                            fullWidth
+                            multiline
+                            rows={4}
+                            value={reviewComment}
+                            onChange={(e) => setReviewComment(e.target.value)}
+                            sx={{ mt: 2 }}
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    px: 3,
+                    pb: 2 
+                }}>
+                    <Box>
+                        {editingReviewId && (
+                            <Button 
+                                onClick={() => {
+                                    if (window.confirm('Are you sure you want to delete this review?')) {
+                                        handleDeleteReview(editingReviewId);
+                                        setOpenReviewDialog(false);
+                                    }
+                                }}
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                            >
+                                Delete Review
+                            </Button>
+                        )}
+                    </Box>
+                    <Box>
+                        <Button 
+                            onClick={() => {
+                                setOpenReviewDialog(false);
+                                setEditingReviewId(null);
+                                setReviewRating(0);
+                                setReviewComment('');
+                            }}
+                            sx={{ mr: 1 }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleSubmitReview}
+                            variant="contained"
+                            disabled={!reviewRating}
+                        >
+                            {editingReviewId ? 'Update' : 'Submit'}
+                        </Button>
+                    </Box>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 }

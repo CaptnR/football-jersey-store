@@ -26,6 +26,7 @@ import logging
 from django.utils import timezone
 from django.db import transaction
 from datetime import timedelta
+from rest_framework.exceptions import NotFound
 
 logger = logging.getLogger(__name__)
 
@@ -546,14 +547,34 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         jersey_id = self.kwargs.get('jersey_id')
-        queryset = Review.objects.filter(jersey_id=jersey_id).order_by('-created_at')
+        return Review.objects.filter(jersey_id=jersey_id).order_by('-created_at')
+
+    def perform_update(self, serializer):
+        jersey_id = self.kwargs.get('jersey_id')
+        try:
+            jersey = Jersey.objects.get(id=jersey_id)
+            serializer.save(jersey=jersey)
+            
+            # Recalculate average rating
+            avg_rating = Review.objects.filter(jersey=jersey).aggregate(
+                models.Avg('rating')
+            )['rating__avg'] or 0
+            jersey.average_rating = avg_rating
+            jersey.save()
+            
+        except Jersey.DoesNotExist:
+            raise NotFound('Jersey not found')
+
+    def perform_destroy(self, instance):
+        jersey = instance.jersey
+        instance.delete()
         
-        # Add a flag to identify the user's own review
-        if self.request.user.is_authenticated:
-            for review in queryset:
-                review.is_users_review = (review.user == self.request.user)
-        
-        return queryset
+        # Recalculate average rating
+        avg_rating = Review.objects.filter(jersey=jersey).aggregate(
+            models.Avg('rating')
+        )['rating__avg'] or 0
+        jersey.average_rating = avg_rating
+        jersey.save()
 
     def update(self, request, *args, **kwargs):
         review = self.get_object()
@@ -571,7 +592,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
         # Update jersey's average rating
         jersey = review.jersey
-        avg_rating = Review.objects.filter(jersey=jersey).aggregate(models.Avg('rating'))['rating__avg']
+        avg_rating = Review.objects.filter(jersey=jersey).aggregate(
+            models.Avg('rating')
+        )['rating__avg'] or 0
         jersey.average_rating = avg_rating
         jersey.save()
 
@@ -588,24 +611,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
             )
 
         # Check if user has purchased the jersey
-        orders = Order.objects.filter(
-            user=request.user,
-            status__in=['processing', 'delivered']  # Include both processing and delivered orders
-        )
-
-        has_purchased = False
-        for order in orders:
-            try:
-                items = order.items if isinstance(order.items, list) else []
-                for item in items:
-                    if isinstance(item, dict) and str(item.get('jersey_id', '')) == str(jersey_id):
-                        has_purchased = True
-                        break
-                if has_purchased:
-                    break
-            except Exception as e:
-                print(f"Error checking order items: {e}")
-                continue
+        has_purchased = OrderItem.objects.filter(
+            order__user=request.user,
+            order__status='delivered',
+            jersey_id=jersey_id
+        ).exists()
 
         if not has_purchased:
             return Response(
@@ -622,23 +632,20 @@ class ReviewViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            # Create the review
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save(user=request.user, jersey=jersey)
             
             # Update jersey's average rating
-            jersey_reviews = Review.objects.filter(jersey=jersey)
-            avg_rating = jersey_reviews.aggregate(models.Avg('rating'))['rating__avg']
-            jersey.average_rating = avg_rating
-            jersey.save()
+            avg_rating = Review.objects.filter(jersey=jersey).aggregate(
+                models.Avg('rating')
+            )['rating__avg'] or 0
             
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            print(f"Error creating review: {e}")
             return Response(
-                {"error": "Failed to create review"},
+                {"error": f"Failed to create review: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

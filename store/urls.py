@@ -53,6 +53,12 @@ urlpatterns += [
         'get': 'list',
         'post': 'create'
     }), name='jersey-reviews'),
+    path('jerseys/<int:jersey_id>/reviews/<int:pk>/', views.ReviewViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'patch': 'partial_update',
+        'delete': 'destroy'
+    }), name='review-detail'),
 ]
 
 urlpatterns += [

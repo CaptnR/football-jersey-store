@@ -158,19 +158,23 @@ class AdminOrderSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'total_price', 'status', 'created_at']
 
 class ReviewSerializer(serializers.ModelSerializer):
-    user_name = serializers.SerializerMethodField()
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    is_edited = serializers.BooleanField(read_only=True)
+    jersey = serializers.PrimaryKeyRelatedField(queryset=Jersey.objects.all())
 
     class Meta:
         model = Review
-        fields = ['id', 'user_name', 'rating', 'comment', 'created_at', 'jersey']
-        read_only_fields = ['user_name', 'created_at', 'jersey']
-
-    def get_user_name(self, obj):
-        return obj.user.username
+        fields = ['id', 'rating', 'comment', 'user_name', 'created_at', 'is_edited', 'jersey']
+        read_only_fields = ['user', 'created_at']
 
     def validate_rating(self, value):
         if not isinstance(value, int) or value < 1 or value > 5:
             raise serializers.ValidationError("Rating must be an integer between 1 and 5")
+        return value
+
+    def validate_comment(self, value):
+        if value is None:
+            return ''
         return value
 
 class AdminJerseySerializer(serializers.ModelSerializer):

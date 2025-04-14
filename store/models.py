@@ -180,12 +180,18 @@ class Review(models.Model):
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_edited = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('user', 'jersey')
 
     def __str__(self):
         return f"{self.user.username}'s review of {self.jersey.player.name} jersey"
+
+    def save(self, *args, **kwargs):
+        if self.id:  # If review exists (being updated)
+            self.is_edited = True
+        super().save(*args, **kwargs)
 
 class Sale(models.Model):
     SALE_TYPE_CHOICES = [
