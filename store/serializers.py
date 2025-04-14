@@ -27,6 +27,7 @@ class JerseySerializer(serializers.ModelSerializer):
     team_name = serializers.CharField(source='player.team.name', read_only=True)
     league = serializers.CharField(source='player.team.league', read_only=True)
     average_rating = serializers.FloatField(read_only=True)
+    total_reviews = serializers.IntegerField(read_only=True)
     user_has_purchased = serializers.SerializerMethodField()
     is_low_stock = serializers.BooleanField(read_only=True)
     images = JerseyImageSerializer(many=True, read_only=True)
@@ -39,8 +40,8 @@ class JerseySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'player', 'number', 'price', 'currency', 'description',
             'stock', 'low_stock_threshold', 'images', 'primary_image',
-            'team_name', 'league', 'average_rating', 'user_has_purchased',
-            'is_low_stock', 'sale_price', 'on_sale'
+            'team_name', 'league', 'average_rating', 'total_reviews',
+            'user_has_purchased', 'is_low_stock', 'sale_price', 'on_sale'
         ]
 
     def to_representation(self, instance):
@@ -48,19 +49,12 @@ class JerseySerializer(serializers.ModelSerializer):
         representation['price'] = float(instance.price)
         if instance.sale_price is not None:
             representation['sale_price'] = float(instance.sale_price)
+        if representation.get('average_rating'):
+            representation['average_rating'] = float(instance.average_rating)
         return representation
 
     def get_currency(self, obj):
         return CURRENCY
-
-    def get_average_rating(self, obj):
-        try:
-            return Review.objects.filter(jersey=obj).aggregate(
-                avg_rating=models.Avg('rating')
-            )['avg_rating'] or 0
-        except Exception as e:
-            print(f"Error calculating average rating: {e}")
-            return 0
 
     def get_user_has_purchased(self, obj):
         request = self.context.get('request')
@@ -122,9 +116,11 @@ class CustomizationSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    jersey_id = serializers.IntegerField(source='jersey.id', read_only=True)
+    
     class Meta:
         model = OrderItem
-        fields = ['jersey', 'quantity', 'price', 'size', 'type', 'player_name']
+        fields = ['jersey_id', 'quantity', 'price', 'size', 'type', 'player_name']
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
@@ -143,9 +139,18 @@ class OrderSerializer(serializers.ModelSerializer):
         return representation
 
 class UserOrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    status = serializers.CharField()
+    
     class Meta:
         model = Order
-        fields = ['id', 'total_price', 'status', 'created_at']
+        fields = ['id', 'total_price', 'status', 'created_at', 'items']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Ensure status is lowercase for consistent comparison
+        representation['status'] = representation['status'].lower()
+        return representation
 
 class AdminOrderSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source='user.username')

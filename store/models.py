@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from .constants import CURRENCY
 from django.utils import timezone
+from django.db.models import Avg
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
@@ -47,6 +48,8 @@ class Jersey(models.Model):
     low_stock_threshold = models.IntegerField(default=10)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
+    average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    total_reviews = models.IntegerField(default=0)
 
     class Meta:
         verbose_name_plural = "Jerseys"
@@ -98,6 +101,17 @@ class Jersey(models.Model):
         else:  # PERCENTAGE
             discount = (float(applicable_sale.discount_value) / 100) * float(self.price)
             return max(0, float(self.price) - discount)
+
+    def update_rating_stats(self):
+        """Update the average rating and total reviews count"""
+        reviews = self.reviews.all()
+        self.total_reviews = reviews.count()
+        if self.total_reviews > 0:
+            avg = reviews.aggregate(Avg('rating'))['rating__avg']
+            self.average_rating = round(float(avg), 2)
+        else:
+            self.average_rating = 0
+        self.save(update_fields=['average_rating', 'total_reviews'])
 
 class Customization(models.Model):
     JERSEY_TYPE_CHOICES = [
@@ -175,7 +189,7 @@ class Wishlist(models.Model):
 
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE)
+    jersey = models.ForeignKey(Jersey, on_delete=models.CASCADE, related_name='reviews')
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -191,6 +205,14 @@ class Review(models.Model):
         if self.id:  # If review exists (being updated)
             self.is_edited = True
         super().save(*args, **kwargs)
+        # Update jersey rating stats after save
+        self.jersey.update_rating_stats()
+
+    def delete(self, *args, **kwargs):
+        jersey = self.jersey  # Store reference before deletion
+        super().delete(*args, **kwargs)
+        # Update jersey rating stats after delete
+        jersey.update_rating_stats()
 
 class Sale(models.Model):
     SALE_TYPE_CHOICES = [

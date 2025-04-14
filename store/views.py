@@ -559,85 +559,34 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        jersey_id = self.kwargs.get('jersey_id')
-        return Review.objects.filter(jersey_id=jersey_id).order_by('-created_at')
+        return Review.objects.filter(jersey_id=self.kwargs['jersey_id'])
 
-    def get_object(self):
-        # Override get_object to filter by both jersey_id and review id
-        queryset = self.get_queryset()
-        pk = self.kwargs.get('pk')
-        obj = get_object_or_404(queryset, pk=pk)
-        self.check_object_permissions(self.request, obj)
-        return obj
-
-    def perform_destroy(self, instance):
-        jersey = instance.jersey
-        instance.delete()
-        # Recalculate average rating
-        avg_rating = Review.objects.filter(jersey=jersey).aggregate(
-            models.Avg('rating')
-        )['rating__avg'] or 0
-        jersey.average_rating = avg_rating
-        jersey.save()
+    def perform_create(self, serializer):
+        jersey = get_object_or_404(Jersey, id=self.kwargs['jersey_id'])
+        # Check if user has already reviewed this jersey
+        if Review.objects.filter(user=self.request.user, jersey=jersey).exists():
+            raise serializers.ValidationError("You have already reviewed this jersey")
+        serializer.save(user=self.request.user, jersey=jersey)
 
     def perform_update(self, serializer):
-        review = serializer.save()
-        # Recalculate average rating
-        jersey = review.jersey
-        avg_rating = Review.objects.filter(jersey=jersey).aggregate(
-            models.Avg('rating')
-        )['rating__avg'] or 0
-        jersey.average_rating = avg_rating
-        jersey.save()
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        instance.delete()
 
     def create(self, request, *args, **kwargs):
-        jersey_id = self.kwargs.get('jersey_id')
         try:
-            jersey = Jersey.objects.get(id=jersey_id)
-        except Jersey.DoesNotExist:
-            return Response(
-                {"error": "Jersey not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Check if user has purchased the jersey
-        has_purchased = OrderItem.objects.filter(
-            order__user=request.user,
-            order__status='delivered',
-            jersey_id=jersey_id
-        ).exists()
-
-        if not has_purchased:
-            return Response(
-                {"error": "You can only review jerseys you have purchased"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        # Check if user already reviewed this jersey
-        existing_review = Review.objects.filter(user=request.user, jersey=jersey).first()
-        if existing_review:
-            return Response(
-                {"error": "You have already reviewed this jersey"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save(user=request.user, jersey=jersey)
-            
-            # Update jersey's average rating
-            avg_rating = Review.objects.filter(jersey=jersey).aggregate(
-                models.Avg('rating')
-            )['rating__avg'] or 0
-            
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            return Response(
-                {"error": f"Failed to create review: {str(e)}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            response = super().create(request, *args, **kwargs)
+            # Fetch updated jersey data
+            jersey = Jersey.objects.get(id=self.kwargs['jersey_id'])
+            return Response({
+                'message': 'Review created successfully',
+                'average_rating': jersey.average_rating,
+                'total_reviews': jersey.total_reviews,
+                'data': response.data
+            })
+        except serializers.ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class OrderStatusView(APIView):
     permission_classes = [IsAuthenticated]

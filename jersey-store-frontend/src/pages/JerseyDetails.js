@@ -91,6 +91,11 @@ function JerseyDetails() {
 
     const [currentUsername, setCurrentUsername] = useState(null);
 
+    const [jerseyStats, setJerseyStats] = useState({
+        average_rating: 0,
+        total_reviews: 0
+    });
+
     const SIZES = [
         { value: 'XS', label: 'Extra Small' },
         { value: 'S', label: 'Small' },
@@ -117,24 +122,44 @@ function JerseyDetails() {
                     API.get('/orders/my_orders/')
                 ]);
 
-                setJersey(jerseyRes.data);
-                const reviewsData = reviewsRes.data;
-                setReviews(reviewsData);
+                console.log('Orders:', ordersRes.data);
+                console.log('Current Jersey ID:', id);
+                console.log('Reviews:', reviewsRes.data);
+                console.log('Current Username:', currentUsername);
 
-                // Find user's existing review
-                const existingReview = reviewsData.find(review => review.is_users_review);
-                if (existingReview) {
-                    setUserReview(existingReview);
-                    setUserRating(existingReview.rating);
-                    setComment(existingReview.comment);
-                    setCanReview(false);
-                } else {
-                    // Check if user has purchased the jersey
-                    const hasPurchased = ordersRes.data.some(order => 
-                        order.items.some(item => String(item.jersey_id) === String(id))
-                    );
-                    setCanReview(hasPurchased);
-                }
+                setJersey(jerseyRes.data);
+                setReviews(reviewsRes.data);
+
+                // Check if user has purchased the jersey
+                const hasPurchased = ordersRes.data.some(order => {
+                    console.log('Checking order:', order);
+                    return order.items?.some(item => {
+                        console.log('Checking item:', item);
+                        const isMatch = item.jersey_id === parseInt(id) && order.status === 'delivered';
+                        console.log('Jersey IDs:', item.jersey_id, parseInt(id));
+                        console.log('Order status:', order.status);
+                        console.log('Is match?', isMatch);
+                        return isMatch;
+                    });
+                });
+                
+                console.log('Has purchased:', hasPurchased);
+                setUserHasPurchased(hasPurchased);
+
+                // Check if user has already reviewed
+                const hasReviewed = reviewsRes.data.some(review => {
+                    const isReviewer = review.user_name === currentUsername;
+                    console.log('Review:', review, 'Current user:', currentUsername, 'Is reviewer?', isReviewer);
+                    return isReviewer;
+                });
+                
+                console.log('Has reviewed:', hasReviewed);
+                setUserHasReviewed(hasReviewed);
+
+                setJerseyStats({
+                    average_rating: Number(jerseyRes.data.average_rating || 0),
+                    total_reviews: jerseyRes.data.total_reviews || 0
+                });
 
                 setLoading(false);
             } catch (error) {
@@ -144,14 +169,15 @@ function JerseyDetails() {
             }
         };
 
-        fetchData();
-    }, [id, isAuthenticated]);
+        if (currentUsername) {  // Only fetch if we have the username
+            fetchData();
+        }
+    }, [id, isAuthenticated, currentUsername]);
 
+    // Add this useEffect to refetch when username becomes available
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            // Get username from localStorage since we store it during login
-            const username = localStorage.getItem('username');
+        const username = localStorage.getItem('username');
+        if (username) {
             setCurrentUsername(username);
         }
     }, []);
@@ -168,19 +194,11 @@ function JerseyDetails() {
         }
     };
 
-    const handleEditReview = async (review) => {
-        try {
-            await API.put(`/jerseys/${id}/reviews/${review.id}/`, {
-                rating: reviewRating,
-                comment: reviewComment
-            });
-            showToast('Review updated successfully', 'success');
-            setOpenReviewDialog(false);
-            setEditingReviewId(null);
-            fetchJerseyDetails();
-        } catch (error) {
-            showToast(error.response?.data?.error || 'Failed to update review', 'error');
-        }
+    const handleEditReview = (review) => {
+        setEditingReviewId(review.id);
+        setReviewRating(review.rating);
+        setReviewComment(review.comment);
+        setOpenReviewDialog(true);
     };
 
     const handleDeleteReview = async (reviewId) => {
@@ -190,7 +208,19 @@ function JerseyDetails() {
             setDeleteConfirmOpen(false);
             setOpenReviewDialog(false);
             setEditingReviewId(null);
-            fetchJerseyDetails();
+            
+            // Refresh the reviews and jersey data
+            const [jerseyRes, reviewsRes] = await Promise.all([
+                API.get(`/jerseys/${id}/`),
+                API.get(`/jerseys/${id}/reviews/`)
+            ]);
+            
+            setJersey(jerseyRes.data);
+            setReviews(reviewsRes.data);
+            setJerseyStats({
+                average_rating: Number(jerseyRes.data.average_rating || 0),
+                total_reviews: jerseyRes.data.total_reviews || 0
+            });
         } catch (error) {
             showToast(error.response?.data?.error || 'Failed to delete review', 'error');
         }
@@ -206,15 +236,32 @@ function JerseyDetails() {
             } else {
                 await API.post(`/jerseys/${id}/reviews/`, {
                     rating: reviewRating,
-                    comment: reviewComment
+                    comment: reviewComment,
+                    jersey: id
                 });
             }
+            
+            // Refresh the reviews and jersey data
+            const [jerseyRes, reviewsRes] = await Promise.all([
+                API.get(`/jerseys/${id}/`),
+                API.get(`/jerseys/${id}/reviews/`)
+            ]);
+            
+            setJersey(jerseyRes.data);
+            setReviews(reviewsRes.data);
+            setJerseyStats({
+                average_rating: Number(jerseyRes.data.average_rating || 0),
+                total_reviews: jerseyRes.data.total_reviews || 0
+            });
+
             showToast(`Review ${editingReviewId ? 'updated' : 'submitted'} successfully`, 'success');
             setOpenReviewDialog(false);
             setEditingReviewId(null);
             setReviewRating(0);
             setReviewComment('');
-            fetchJerseyDetails();
+            
+            // Update user review status
+            setUserHasReviewed(true);
         } catch (error) {
             showToast(error.response?.data?.error || `Failed to ${editingReviewId ? 'update' : 'submit'} review`, 'error');
         }
@@ -278,29 +325,20 @@ function JerseyDetails() {
 
     const fetchJerseyDetails = async () => {
         try {
-            setLoading(true);
-            const response = await API.get(`/jerseys/${id}/`);
-            setJersey(response.data);
-            setUserHasPurchased(response.data.user_has_purchased);
+            const [jerseyRes, reviewsRes] = await Promise.all([
+                API.get(`/jerseys/${id}/`),
+                API.get(`/jerseys/${id}/reviews/`)
+            ]);
             
-            // Fetch reviews and log the response
-            const reviewsResponse = await API.get(`/jerseys/${id}/reviews/`);
-            const reviews = reviewsResponse.data;
-            console.log('Reviews:', reviews);
-            console.log('Current username:', currentUsername);
-            
-            setJersey(prev => ({
-                ...prev,
-                reviews: reviews
-            }));
-            
-            setUserHasReviewed(reviews.some(review => review.user_name === currentUsername));
-            
+            setJersey(jerseyRes.data);
+            setJerseyStats({
+                average_rating: Number(jerseyRes.data.average_rating || 0),
+                total_reviews: jerseyRes.data.total_reviews || 0
+            });
+            setReviews(reviewsRes.data);
         } catch (error) {
             console.error('Error fetching jersey details:', error);
             showToast('Failed to load jersey details', 'error');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -321,6 +359,11 @@ function JerseyDetails() {
             return 0;
         }
         return jersey.average_rating;
+    };
+
+    const formatRating = (rating) => {
+        if (rating === null || rating === undefined) return '0.0';
+        return Number(rating).toFixed(1);
     };
 
     if (loading) {
@@ -503,12 +546,15 @@ function JerseyDetails() {
                                             
                                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                                                 <Rating 
-                                                    value={getAverageRating(jersey)} 
+                                                    value={Number(jerseyStats.average_rating || 0)} 
                                                     readOnly 
                                                     precision={0.5}
                                                 />
                                                 <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                                    ({getAverageRating(jersey).toFixed(1)})
+                                                    ({formatRating(jerseyStats.average_rating)}) 
+                                                    {jerseyStats.total_reviews > 0 && 
+                                                        `• ${jerseyStats.total_reviews} review${jerseyStats.total_reviews !== 1 ? 's' : ''}`
+                                                    }
                                                 </Typography>
                                             </Box>
 
@@ -576,9 +622,9 @@ function JerseyDetails() {
                                             </Alert>
 
                                             {/* Reviews List */}
-                                            {jersey?.reviews?.length > 0 ? (
+                                            {reviews.length > 0 ? (
                                                 <Box sx={{ mb: 3 }}>
-                                                    {jersey.reviews.map((review) => {
+                                                    {reviews.map((review) => {
                                                         console.log('Rendering review:', review);
                                                         console.log('Review username:', review.user_name);
                                                         console.log('Current username:', currentUsername);
@@ -647,16 +693,24 @@ function JerseyDetails() {
                                             )}
 
                                             {/* Review Button */}
-                                            {userHasPurchased && !userHasReviewed && (
-                                                <Button
-                                                    variant="contained"
-                                                    onClick={() => setOpenReviewDialog(true)}
-                                                    startIcon={<RateReviewIcon />}
-                                                    sx={{ mt: 2 }}
-                                                >
-                                                    Write a Review
-                                                </Button>
-                                            )}
+                                            {(() => {
+                                                console.log('Review button conditions:', {
+                                                    isAuthenticated,
+                                                    userHasPurchased,
+                                                    userHasReviewed,
+                                                    currentUsername
+                                                });
+                                                return isAuthenticated && userHasPurchased && !userHasReviewed && (
+                                                    <Button
+                                                        variant="contained"
+                                                        onClick={() => setOpenReviewDialog(true)}
+                                                        startIcon={<RateReviewIcon />}
+                                                        sx={{ mt: 2 }}
+                                                    >
+                                                        Write a Review
+                                                    </Button>
+                                                );
+                                            })()}
 
                                             {/* Review Dialog */}
                                             <Dialog 
