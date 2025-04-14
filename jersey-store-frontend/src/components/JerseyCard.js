@@ -1,6 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 import {
     Card,
     CardContent,
@@ -23,6 +24,7 @@ import SizeSelectionDialog from './SizeSelectionDialog';
 
 function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist, isInWishlist, requiresAuth }) {
     const { addToCart } = useContext(CartContext);
+    const { showToast } = useToast();
     const navigate = useNavigate();
     const [sizeDialogOpen, setSizeDialogOpen] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -86,7 +88,20 @@ function JerseyCard({ jersey, onAddToCart, onAddToWishlist, onRemoveFromWishlist
     };
 
     const handleSizeSelect = (size) => {
-        addToCart({ ...jersey, size });
+        const cartItem = {
+            ...jersey,
+            size,
+            quantity: 1,
+            // Use sale price if available, otherwise use regular price
+            price: jersey.sale_price || jersey.price,
+            // Ensure price is a number
+            sale_price: jersey.sale_price ? Number(jersey.sale_price) : null,
+            regular_price: Number(jersey.price)
+        };
+        
+        addToCart(cartItem);
+        showToast('Added to cart successfully', 'success');
+        setSizeDialogOpen(false);
     };
 
     const handlePrevImage = (e) => {

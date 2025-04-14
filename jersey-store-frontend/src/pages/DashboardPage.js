@@ -153,7 +153,13 @@ function DashboardPage() {
                                     {order.items && order.items.map((item, index) => (
                                         <Box key={index} sx={{ mt: 1, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
                                             <Typography variant="body2">
-                                                {item.player_name} Jersey
+                                                {item.type === 'custom' ? (
+                                                    // For custom jerseys
+                                                    `Custom Jersey - ${item.player_name || 'Unnamed'}`
+                                                ) : (
+                                                    // For regular jerseys
+                                                    `${item.jersey_details?.player?.name || 'Unknown Player'}'s Jersey`
+                                                )}
                                             </Typography>
                                             <Box sx={{ display: 'flex', gap: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
                                                 <Typography variant="caption">
@@ -163,15 +169,17 @@ function DashboardPage() {
                                                     Size: {item.size}
                                                 </Typography>
                                             </Box>
-                                            {/* Add link to jersey details */}
-                                            <Button 
-                                                component={Link} 
-                                                to={`/jersey/${item.jersey}`} 
-                                                size="small" 
-                                                sx={{ mt: 0.5, fontSize: '0.75rem' }}
-                                            >
-                                                View Jersey
-                                            </Button>
+                                            {/* Add link to jersey details for regular jerseys */}
+                                            {item.type !== 'custom' && (
+                                                <Button 
+                                                    component={Link} 
+                                                    to={`/jersey/${item.jersey_id}`} 
+                                                    size="small" 
+                                                    sx={{ mt: 0.5, fontSize: '0.75rem' }}
+                                                >
+                                                    View Jersey
+                                                </Button>
+                                            )}
                                         </Box>
                                     ))}
                                     

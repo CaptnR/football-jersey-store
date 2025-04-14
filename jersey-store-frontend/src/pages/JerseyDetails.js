@@ -130,7 +130,7 @@ function JerseyDetails() {
                 setJersey(jerseyRes.data);
                 setReviews(reviewsRes.data);
 
-                // Check if user has purchased the jersey
+                    // Check if user has purchased the jersey
                 const hasPurchased = ordersRes.data.some(order => {
                     console.log('Checking order:', order);
                     return order.items?.some(item => {
@@ -170,7 +170,7 @@ function JerseyDetails() {
         };
 
         if (currentUsername) {  // Only fetch if we have the username
-            fetchData();
+        fetchData();
         }
     }, [id, isAuthenticated, currentUsername]);
 

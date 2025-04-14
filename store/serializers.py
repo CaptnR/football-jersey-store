@@ -116,27 +116,18 @@ class CustomizationSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    jersey_id = serializers.IntegerField(source='jersey.id', read_only=True)
+    jersey_details = JerseySerializer(source='jersey', read_only=True)
     
     class Meta:
         model = OrderItem
-        fields = ['jersey_id', 'quantity', 'price', 'size', 'type', 'player_name']
+        fields = ['jersey_id', 'jersey_details', 'quantity', 'price', 'size', 'type', 'player_name']
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
-    user = serializers.StringRelatedField()
-    total_price = serializers.DecimalField(max_digits=10, decimal_places=2)
     
     class Meta:
         model = Order
-        fields = ['id', 'user', 'total_price', 'status', 'created_at', 'updated_at', 'items']
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        # Ensure status is lowercase
-        if representation.get('status'):
-            representation['status'] = representation['status'].lower()
-        return representation
+        fields = ['id', 'total_price', 'status', 'created_at', 'items']
 
 class UserOrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
