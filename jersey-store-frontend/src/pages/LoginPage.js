@@ -44,14 +44,16 @@ function LoginPage() {
         try {
             const response = await login(formData);
             
-            // Login function in AuthContext now handles token storage
+            // Navigation should happen after token is set
+            if (response.is_admin) {
+                navigate('/admin/dashboard');
+            } else {
+                navigate(location.state?.from || '/');
+            }
+            
             showToast('Login successful!', 'success');
-            
-            // If there's a redirect path, use it, otherwise go to home
-            const redirectPath = location.state?.from?.pathname || '/';
-            navigate(redirectPath);
-            
         } catch (error) {
+            console.error('Login error:', error);
             setError(error.response?.data?.error || 'Failed to login');
             showToast(error.response?.data?.error || 'Failed to login', 'error');
         } finally {

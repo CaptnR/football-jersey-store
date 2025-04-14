@@ -26,7 +26,8 @@ import logging
 from django.utils import timezone
 from django.db import transaction
 from datetime import timedelta
-from rest_framework.exceptions import NotFound
+from django.urls import reverse
+from django.shortcuts import get_object_or_404
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +46,6 @@ def signup_user(request):
 @permission_classes([AllowAny])
 def login_user(request):
     try:
-        # Add debug logging
-        print("Login attempt with data:", request.data)
-        
         username = request.data.get('username')
         password = request.data.get('password')
         
@@ -66,18 +64,17 @@ def login_user(request):
                     'username': user.username
                 })
             return Response({
-                'error': 'Invalid password'
+                'error': 'Invalid credentials'
             }, status=400)
         except User.DoesNotExist:
             return Response({
-                'error': 'User does not exist'
+                'error': 'Invalid credentials'
             }, status=400)
             
     except Exception as e:
-        print("Login error:", str(e))  # Add server-side error logging
         return Response({
-            'error': 'Server error occurred'
-        }, status=500)
+            'error': str(e)
+        }, status=400)
 
 class TeamViewSet(ModelViewSet):
     queryset = Team.objects.all()
@@ -549,26 +546,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
         jersey_id = self.kwargs.get('jersey_id')
         return Review.objects.filter(jersey_id=jersey_id).order_by('-created_at')
 
-    def perform_update(self, serializer):
-        jersey_id = self.kwargs.get('jersey_id')
-        try:
-            jersey = Jersey.objects.get(id=jersey_id)
-            serializer.save(jersey=jersey)
-            
-            # Recalculate average rating
-            avg_rating = Review.objects.filter(jersey=jersey).aggregate(
-                models.Avg('rating')
-            )['rating__avg'] or 0
-            jersey.average_rating = avg_rating
-            jersey.save()
-            
-        except Jersey.DoesNotExist:
-            raise NotFound('Jersey not found')
+    def get_object(self):
+        # Override get_object to filter by both jersey_id and review id
+        queryset = self.get_queryset()
+        pk = self.kwargs.get('pk')
+        obj = get_object_or_404(queryset, pk=pk)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def perform_destroy(self, instance):
         jersey = instance.jersey
         instance.delete()
-        
         # Recalculate average rating
         avg_rating = Review.objects.filter(jersey=jersey).aggregate(
             models.Avg('rating')
@@ -576,29 +564,15 @@ class ReviewViewSet(viewsets.ModelViewSet):
         jersey.average_rating = avg_rating
         jersey.save()
 
-    def update(self, request, *args, **kwargs):
-        review = self.get_object()
-        
-        # Check if the user owns this review
-        if review.user != request.user:
-            return Response(
-                {"error": "You can only edit your own reviews"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        serializer = self.get_serializer(review, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        # Update jersey's average rating
+    def perform_update(self, serializer):
+        review = serializer.save()
+        # Recalculate average rating
         jersey = review.jersey
         avg_rating = Review.objects.filter(jersey=jersey).aggregate(
             models.Avg('rating')
         )['rating__avg'] or 0
         jersey.average_rating = avg_rating
         jersey.save()
-
-        return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
         jersey_id = self.kwargs.get('jersey_id')

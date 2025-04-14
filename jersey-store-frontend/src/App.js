@@ -26,6 +26,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { useEffect } from 'react';
+import { API } from './api/api';
 
 function PrivateRoute({ children }) {
     const isAuthenticated = !!localStorage.getItem('token');
@@ -39,6 +41,14 @@ function PrivateRoute({ children }) {
 }
 
 function App() {
+    useEffect(() => {
+        // Set initial auth header if token exists
+        const token = localStorage.getItem('token');
+        if (token) {
+            API.defaults.headers.common['Authorization'] = `Token ${token}`;
+        }
+    }, []);
+
     return (
         <AuthProvider>
             <LocalizationProvider dateAdapter={AdapterDayjs}>

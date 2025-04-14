@@ -43,7 +43,6 @@ import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 import DeleteIcon from '@mui/icons-material/Delete';
-import SizeSelector from '../components/SizeSelector';
 
 function JerseyDetails() {
     const { id } = useParams();
@@ -88,6 +87,9 @@ function JerseyDetails() {
 
     // New state for editing review
     const [editingReviewId, setEditingReviewId] = useState(null);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+    const [currentUsername, setCurrentUsername] = useState(null);
 
     const SIZES = [
         { value: 'XS', label: 'Extra Small' },
@@ -145,6 +147,15 @@ function JerseyDetails() {
         fetchData();
     }, [id, isAuthenticated]);
 
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            // Get username from localStorage since we store it during login
+            const username = localStorage.getItem('username');
+            setCurrentUsername(username);
+        }
+    }, []);
+
     const handleEditClick = () => {
         setIsEditing(true);
     };
@@ -157,39 +168,47 @@ function JerseyDetails() {
         }
     };
 
-    const handleEditReview = (review) => {
-        setReviewRating(review.rating);
-        setReviewComment(review.comment);
-        setEditingReviewId(review.id);
-        setOpenReviewDialog(true);
+    const handleEditReview = async (review) => {
+        try {
+            await API.put(`/jerseys/${id}/reviews/${review.id}/`, {
+                rating: reviewRating,
+                comment: reviewComment
+            });
+            showToast('Review updated successfully', 'success');
+            setOpenReviewDialog(false);
+            setEditingReviewId(null);
+            fetchJerseyDetails();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Failed to update review', 'error');
+        }
     };
 
     const handleDeleteReview = async (reviewId) => {
-        if (window.confirm('Are you sure you want to delete this review?')) {
-            try {
-                await API.delete(`/jerseys/${id}/reviews/${reviewId}/`);
-                showToast('Review deleted successfully', 'success');
-                fetchJerseyDetails();
-            } catch (error) {
-                showToast(error.response?.data?.error || 'Failed to delete review', 'error');
-            }
+        try {
+            await API.delete(`/jerseys/${id}/reviews/${reviewId}/`);
+            showToast('Review deleted successfully', 'success');
+            setDeleteConfirmOpen(false);
+            setOpenReviewDialog(false);
+            setEditingReviewId(null);
+            fetchJerseyDetails();
+        } catch (error) {
+            showToast(error.response?.data?.error || 'Failed to delete review', 'error');
         }
     };
 
     const handleSubmitReview = async () => {
         try {
-            const reviewData = {
-                rating: parseInt(reviewRating), // Ensure rating is an integer
-                comment: reviewComment || '', // Ensure comment is not null
-                jersey: parseInt(id) // Include the jersey ID
-            };
-
             if (editingReviewId) {
-                await API.put(`/jerseys/${id}/reviews/${editingReviewId}/`, reviewData);
+                await API.put(`/jerseys/${id}/reviews/${editingReviewId}/`, {
+                    rating: reviewRating,
+                    comment: reviewComment
+                });
             } else {
-                await API.post(`/jerseys/${id}/reviews/`, reviewData);
+                await API.post(`/jerseys/${id}/reviews/`, {
+                    rating: reviewRating,
+                    comment: reviewComment
+                });
             }
-
             showToast(`Review ${editingReviewId ? 'updated' : 'submitted'} successfully`, 'success');
             setOpenReviewDialog(false);
             setEditingReviewId(null);
@@ -197,12 +216,7 @@ function JerseyDetails() {
             setReviewComment('');
             fetchJerseyDetails();
         } catch (error) {
-            console.error('Review error:', error.response?.data || error);
-            showToast(
-                error.response?.data?.error || 
-                `Failed to ${editingReviewId ? 'update' : 'submit'} review`, 
-                'error'
-            );
+            showToast(error.response?.data?.error || `Failed to ${editingReviewId ? 'update' : 'submit'} review`, 'error');
         }
     };
 
@@ -269,17 +283,18 @@ function JerseyDetails() {
             setJersey(response.data);
             setUserHasPurchased(response.data.user_has_purchased);
             
-            // Fetch reviews
+            // Fetch reviews and log the response
             const reviewsResponse = await API.get(`/jerseys/${id}/reviews/`);
             const reviews = reviewsResponse.data;
+            console.log('Reviews:', reviews);
+            console.log('Current username:', currentUsername);
+            
             setJersey(prev => ({
                 ...prev,
                 reviews: reviews
             }));
             
-            // Check if user has already reviewed
-            const username = localStorage.getItem('username');
-            setUserHasReviewed(reviews.some(review => review.user_name === username));
+            setUserHasReviewed(reviews.some(review => review.user_name === currentUsername));
             
         } catch (error) {
             console.error('Error fetching jersey details:', error);
@@ -546,72 +561,71 @@ function JerseyDetails() {
                                             </Alert>
 
                                             {/* Reviews List */}
-                                            {jersey?.reviews?.map((review) => (
-                                                <Card 
-                                                    key={review.id}
-                                                    sx={{ 
-                                                        mb: 2,
-                                                        p: 2,
-                                                        backgroundColor: 'background.paper',
-                                                        border: '1px solid',
-                                                        borderColor: 'divider',
-                                                        borderRadius: 2
-                                                    }}
-                                                >
-                                                    <Box sx={{ 
-                                                        display: 'flex', 
-                                                        justifyContent: 'space-between', 
-                                                        alignItems: 'flex-start',
-                                                        width: '100%'
-                                                    }}>
-                                                        <Box sx={{ flex: 1 }}>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                                                <Rating 
-                                                                    value={review.rating} 
-                                                                    readOnly 
-                                                                    precision={1}
-                                                                    size="small"
-                                                                />
-                                                                <Typography variant="body2" sx={{ ml: 2, color: 'text.secondary' }}>
-                                                                    by {review.user_name}
-                                                                </Typography>
-                                                                {review.is_edited && (
-                                                                    <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
-                                                                        (edited)
-                                                                    </Typography>
-                                                                )}
-                                                            </Box>
-                                                            <Typography variant="body1">{review.comment}</Typography>
-                                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                                                {new Date(review.created_at).toLocaleDateString()}
-                                                            </Typography>
-                                                        </Box>
-                                                        {console.log('Review username:', review.user_name)}
-                                                        {console.log('Local storage username:', localStorage.getItem('username'))}
-                                                        {review.user_name === localStorage.getItem('username') && (
-                                                            <Box sx={{ ml: 2, display: 'flex' }}>
-                                                                <IconButton 
-                                                                    size="small" 
-                                                                    onClick={() => handleEditReview(review)}
-                                                                    sx={{ mr: 1 }}
-                                                                    color="primary"
-                                                                >
-                                                                    <EditIcon fontSize="small" />
-                                                                </IconButton>
-                                                                <IconButton 
-                                                                    size="small" 
-                                                                    onClick={() => handleDeleteReview(review.id)}
-                                                                    color="error"
-                                                                >
-                                                                    <DeleteIcon fontSize="small" />
-                                                                </IconButton>
-                                                            </Box>
-                                                        )}
-                                                    </Box>
-                                                </Card>
-                                            ))}
-
-                                            {jersey?.reviews?.length === 0 && (
+                                            {jersey?.reviews?.length > 0 ? (
+                                                <Box sx={{ mb: 3 }}>
+                                                    {jersey.reviews.map((review) => {
+                                                        console.log('Rendering review:', review);
+                                                        console.log('Review username:', review.user_name);
+                                                        console.log('Current username:', currentUsername);
+                                                        console.log('Do they match?', review.user_name === currentUsername);
+                                                        
+                                                        return (
+                                                            <Card 
+                                                                key={review.id}
+                                                                sx={{ 
+                                                                    mb: 2,
+                                                                    p: 2,
+                                                                    backgroundColor: 'background.paper',
+                                                                    border: '1px solid',
+                                                                    borderColor: 'divider',
+                                                                    borderRadius: 2
+                                                                }}
+                                                            >
+                                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                                    <Box>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                                                            <Rating value={review.rating} readOnly precision={1} />
+                                                                            <Typography variant="body2" sx={{ ml: 2, color: 'text.secondary' }}>
+                                                                                by {review.user_name}
+                                                                            </Typography>
+                                                                            {review.is_edited && (
+                                                                                <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                                                                                    (edited)
+                                                                                </Typography>
+                                                                            )}
+                                                                        </Box>
+                                                                        <Typography variant="body1">{review.comment}</Typography>
+                                                                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                                                            {new Date(review.created_at).toLocaleDateString()}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                    {currentUsername && review.user_name === currentUsername && (
+                                                                        <Box>
+                                                                            <IconButton 
+                                                                                size="small" 
+                                                                                onClick={() => handleEditReview(review)}
+                                                                                sx={{ mr: 1 }}
+                                                                            >
+                                                                                <EditIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                            <IconButton 
+                                                                                size="small" 
+                                                                                onClick={() => {
+                                                                                    setEditingReviewId(review.id);
+                                                                                    setDeleteConfirmOpen(true);
+                                                                                }}
+                                                                                color="error"
+                                                                            >
+                                                                                <DeleteIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                        </Box>
+                                                                    )}
+                                                                </Box>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </Box>
+                                            ) : (
                                                 <Typography color="text.secondary" sx={{ mb: 3 }}>
                                                     No reviews yet
                                                 </Typography>
@@ -628,6 +642,97 @@ function JerseyDetails() {
                                                     Write a Review
                                                 </Button>
                                             )}
+
+                                            {/* Review Dialog */}
+                                            <Dialog 
+                                                open={openReviewDialog} 
+                                                onClose={() => {
+                                                    setOpenReviewDialog(false);
+                                                    setEditingReviewId(null);
+                                                    setReviewRating(0);
+                                                    setReviewComment('');
+                                                }}
+                                                maxWidth="sm"
+                                                fullWidth
+                                            >
+                                                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    {editingReviewId ? 'Edit Review' : 'Write a Review'}
+                                                    {editingReviewId && (
+                                                        <IconButton 
+                                                            color="error"
+                                                            onClick={() => setDeleteConfirmOpen(true)}
+                                                        >
+                                                            <DeleteIcon />
+                                                        </IconButton>
+                                                    )}
+                                                </DialogTitle>
+                                                <DialogContent>
+                                                    <Box sx={{ py: 2 }}>
+                                                        <Typography gutterBottom>Rating</Typography>
+                                                        <Rating
+                                                            value={reviewRating}
+                                                            onChange={(event, newValue) => {
+                                                                setReviewRating(newValue);
+                                                            }}
+                                                            precision={1}
+                                                            size="large"
+                                                        />
+                                                        <TextField
+                                                            autoFocus
+                                                            margin="dense"
+                                                            label="Your Review"
+                                                            fullWidth
+                                                            multiline
+                                                            rows={4}
+                                                            value={reviewComment}
+                                                            onChange={(e) => setReviewComment(e.target.value)}
+                                                            sx={{ mt: 2 }}
+                                                        />
+                                                    </Box>
+                                                </DialogContent>
+                                                <DialogActions>
+                                                    <Button onClick={() => {
+                                                        setOpenReviewDialog(false);
+                                                        setEditingReviewId(null);
+                                                        setReviewRating(0);
+                                                        setReviewComment('');
+                                                    }}>
+                                                        Cancel
+                                                    </Button>
+                                                    <Button 
+                                                        onClick={handleSubmitReview}
+                                                        variant="contained"
+                                                        disabled={!reviewRating}
+                                                    >
+                                                        {editingReviewId ? 'Update' : 'Submit'}
+                                                    </Button>
+                                                </DialogActions>
+                                            </Dialog>
+
+                                            {/* Delete Confirmation Dialog */}
+                                            <Dialog
+                                                open={deleteConfirmOpen}
+                                                onClose={() => setDeleteConfirmOpen(false)}
+                                            >
+                                                <DialogTitle>Delete Review</DialogTitle>
+                                                <DialogContent>
+                                                    <Typography>
+                                                        Are you sure you want to delete this review? This action cannot be undone.
+                                                    </Typography>
+                                                </DialogContent>
+                                                <DialogActions>
+                                                    <Button onClick={() => setDeleteConfirmOpen(false)}>
+                                                        Cancel
+                                                    </Button>
+                                                    <Button 
+                                                        onClick={() => handleDeleteReview(editingReviewId)}
+                                                        color="error"
+                                                        variant="contained"
+                                                    >
+                                                        Delete
+                                                    </Button>
+                                                </DialogActions>
+                                            </Dialog>
                                         </Box>
                                     </Grid>
                                 </Grid>
@@ -652,90 +757,6 @@ function JerseyDetails() {
                     Added to cart successfully!
                 </Alert>
             </Snackbar>
-
-            {/* Review Dialog */}
-            <Dialog 
-                open={openReviewDialog} 
-                onClose={() => {
-                    setOpenReviewDialog(false);
-                    setEditingReviewId(null);
-                    setReviewRating(0);
-                    setReviewComment('');
-                }}
-                maxWidth="sm"
-                fullWidth
-            >
-                <DialogTitle>
-                    {editingReviewId ? 'Edit Review' : 'Write a Review'}
-                </DialogTitle>
-                <DialogContent>
-                    <Box sx={{ py: 2 }}>
-                        <Typography gutterBottom>Rating</Typography>
-                        <Rating
-                            value={reviewRating}
-                            onChange={(event, newValue) => {
-                                setReviewRating(newValue);
-                            }}
-                            precision={1}
-                            size="large"
-                        />
-                        <TextField
-                            autoFocus
-                            margin="dense"
-                            label="Your Review"
-                            fullWidth
-                            multiline
-                            rows={4}
-                            value={reviewComment}
-                            onChange={(e) => setReviewComment(e.target.value)}
-                            sx={{ mt: 2 }}
-                        />
-                    </Box>
-                </DialogContent>
-                <DialogActions sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    px: 3,
-                    pb: 2 
-                }}>
-                    <Box>
-                        {editingReviewId && (
-                            <Button 
-                                onClick={() => {
-                                    if (window.confirm('Are you sure you want to delete this review?')) {
-                                        handleDeleteReview(editingReviewId);
-                                        setOpenReviewDialog(false);
-                                    }
-                                }}
-                                color="error"
-                                startIcon={<DeleteIcon />}
-                            >
-                                Delete Review
-                            </Button>
-                        )}
-                    </Box>
-                    <Box>
-                        <Button 
-                            onClick={() => {
-                                setOpenReviewDialog(false);
-                                setEditingReviewId(null);
-                                setReviewRating(0);
-                                setReviewComment('');
-                            }}
-                            sx={{ mr: 1 }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button 
-                            onClick={handleSubmitReview}
-                            variant="contained"
-                            disabled={!reviewRating}
-                        >
-                            {editingReviewId ? 'Update' : 'Submit'}
-                        </Button>
-                    </Box>
-                </DialogActions>
-            </Dialog>
         </Container>
     );
 }
