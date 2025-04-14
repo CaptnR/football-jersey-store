@@ -25,8 +25,9 @@ export const CartProvider = ({ children }) => {
             const isCustom = item.type === 'custom';
             const newItem = {
                 ...item,
-                id: isCustom ? `custom-${Date.now()}` : item.id, // Generate unique ID for custom jerseys
-                type: isCustom ? 'custom' : 'regular'
+                id: isCustom ? `custom-${Date.now()}` : item.id,
+                type: isCustom ? 'custom' : 'regular',
+                primary_image: isCustom ? '/images/placeholder.jpg' : item.primary_image // Use absolute path
             };
             
             // Check if item already exists in cart

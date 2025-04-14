@@ -21,6 +21,7 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import { useToast } from '../context/ToastContext';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import { PLACEHOLDER_IMAGE } from '../constants';
 
 function CartPage() {
     const { cartItems, removeFromCart, updateQuantity, loading } = useContext(CartContext);
@@ -55,6 +56,13 @@ function CartPage() {
         if (newQuantity >= 1) {
             handleUpdateQuantity(itemId, newQuantity);
         }
+    };
+
+    const getItemImage = (item) => {
+        if (item.type === 'custom') {
+            return PLACEHOLDER_IMAGE;
+        }
+        return item.primary_image || PLACEHOLDER_IMAGE;
     };
 
     return (
@@ -134,15 +142,16 @@ function CartPage() {
                                                     >
                                                         <CardMedia
                                                             component="img"
-                                                            image={
-                                                                (item.images && item.images.length > 0 && item.images[0].image) ||
-                                                                '/placeholder-jersey.png'
-                                                            }
-                                                            alt={`${item.player?.name}'s Jersey`}
+                                                            image={getItemImage(item)}
+                                                            alt={item.type === 'custom' ? 'Custom Jersey' : item.player?.name}
                                                             sx={{ 
                                                                 width: '100%',
                                                                 height: '100%',
                                                                 objectFit: 'contain'
+                                                            }}
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = '/images/placeholder.jpg';
                                                             }}
                                                         />
                                                     </Box>
@@ -150,7 +159,7 @@ function CartPage() {
                                                 <Grid item xs={9}>
                                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                                                         <Typography variant="h6">
-                                                            {item.player?.name} Jersey
+                                                            {item.type === 'custom' ? `Custom Jersey - ${item.name}` : `${item.player?.name}'s Jersey`}
                                                         </Typography>
                                                         <Typography variant="h6" color="primary">
                                                             ₹{(item.price * item.quantity).toFixed(2)}

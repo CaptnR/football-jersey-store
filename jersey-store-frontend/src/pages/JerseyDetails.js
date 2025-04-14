@@ -308,9 +308,24 @@ function JerseyDetails() {
         fetchJerseyDetails();
     }, [id]);
 
+    // Add a safe price calculation helper
+    const getDisplayPrice = (jersey) => {
+        if (!jersey) return '0.00';
+        const price = jersey.sale_price || jersey.price;
+        return price ? price.toFixed(2) : '0.00';
+    };
+
+    // Add this helper function
+    const getAverageRating = (jersey) => {
+        if (!jersey || typeof jersey.average_rating !== 'number') {
+            return 0;
+        }
+        return jersey.average_rating;
+    };
+
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
                 <CircularProgress />
             </Box>
         );
@@ -488,20 +503,20 @@ function JerseyDetails() {
                                             
                                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                                                 <Rating 
-                                                    value={jersey.average_rating} 
+                                                    value={getAverageRating(jersey)} 
                                                     readOnly 
                                                     precision={0.5}
                                                 />
                                                 <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                                    ({jersey.average_rating.toFixed(1)})
+                                                    ({getAverageRating(jersey).toFixed(1)})
                                                 </Typography>
                                             </Box>
 
                                             <Typography variant="h6" color="text.secondary" gutterBottom>
                                                 {jersey.player.team.name}
                                             </Typography>
-                                            <Typography variant="h5" component="div">
-                                                ₹{jersey.price}
+                                            <Typography variant="h5" color="primary" gutterBottom>
+                                                ₹{getDisplayPrice(jersey)}
                                             </Typography>
 
                                             {jersey.on_sale && (
