@@ -196,41 +196,29 @@ function CheckoutPage() {
         }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-
+    const handlePlaceOrder = async () => {
         try {
-            // Format the order data
+            setLoading(true);
             const orderData = {
                 items: cartItems.map(item => ({
-                    jersey_id: item.id,
+                    jersey_id: item.type === 'custom' ? null : item.id,
                     quantity: item.quantity,
                     price: item.price,
-                    size: item.size || 'M',
-                    type: item.type || 'regular',
-                    player_name: item.player?.name || ''
+                    size: item.size,
+                    type: item.type,
+                    name: item.type === 'custom' ? item.name : null
                 })),
                 total_price: calculateTotal()
             };
 
-            console.log('Sending order data:', orderData); // Debug log
-
             const response = await API.post('/checkout/', orderData);
-            
-            if (response.status === 201) {
-                clearCart();
-                setSuccessMessage('Order placed successfully!');
-                setTimeout(() => {
-                    navigate('/orders');
-                }, 2000);
-            }
+            clearCart();
+            navigate('/orders');
+            setSuccessMessage('Order placed successfully!');
         } catch (error) {
-            console.error('Checkout error:', error);
-            const errorMessage = error.response?.data?.error || 'Failed to place order';
-            setError(errorMessage);
+            setError(error.response?.data?.error || 'Failed to place order');
         } finally {
-            setIsSubmitting(false);
+            setLoading(false);
         }
     };
 
@@ -467,15 +455,15 @@ function CheckoutPage() {
                         <Button
                             variant="contained"
                             fullWidth
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
+                            onClick={handlePlaceOrder}
+                            disabled={loading}
                             sx={{
                                 mt: 3,
                                 py: 1.5,
                                 fontSize: '1.1rem',
                             }}
                         >
-                            {isSubmitting ? <CircularProgress size={24} /> : 'Place Order'}
+                            {loading ? <CircularProgress size={24} /> : 'Place Order'}
                         </Button>
                     </Box>
                 );

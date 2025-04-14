@@ -21,28 +21,27 @@ export const CartProvider = ({ children }) => {
     }, [cartItems]);
 
     const addToCart = (item) => {
-        console.log('Adding item to cart:', item); // Debug log
         setCartItems(prevItems => {
-            const existingItem = prevItems.find(i => 
-                i.id === item.id && i.size === item.size
-            );
-
-            if (existingItem) {
-                return prevItems.map(i =>
-                    i.id === item.id && i.size === item.size
-                        ? { ...i, quantity: i.quantity + (item.quantity || 1) }
-                        : i
-                );
-            }
-
-            // Make sure we're storing all the necessary data
+            const isCustom = item.type === 'custom';
             const newItem = {
                 ...item,
-                quantity: item.quantity || 1,
-                primary_image: item.primary_image,
-                images: item.images
+                id: isCustom ? `custom-${Date.now()}` : item.id, // Generate unique ID for custom jerseys
+                type: isCustom ? 'custom' : 'regular'
             };
-            console.log('New item being added:', newItem); // Debug log
+            
+            // Check if item already exists in cart
+            const existingItemIndex = prevItems.findIndex(i => 
+                isCustom ? 
+                (i.type === 'custom' && i.name === item.name && i.size === item.size) : 
+                (i.id === item.id && i.size === item.size)
+            );
+
+            if (existingItemIndex >= 0) {
+                const updatedItems = [...prevItems];
+                updatedItems[existingItemIndex].quantity += item.quantity || 1;
+                return updatedItems;
+            }
+
             return [...prevItems, newItem];
         });
     };

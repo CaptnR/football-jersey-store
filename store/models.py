@@ -127,10 +127,9 @@ class Order(models.Model):
         ('processing', 'Processing'),
         ('shipped', 'Shipped'),
         ('delivered', 'Delivered'),
-        ('return_pending', 'Return Pending'),
+        ('return_requested', 'Return Requested'),
         ('return_approved', 'Return Approved'),
         ('return_rejected', 'Return Rejected'),
-        ('return_completed', 'Return Completed'),
         ('cancelled', 'Cancelled')
     ]
 

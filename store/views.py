@@ -223,54 +223,49 @@ class CheckoutView(APIView):
     def post(self, request):
         try:
             with transaction.atomic():
-                if not request.data.get('items'):
-                    return Response({
-                        'error': 'No items provided'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-
-                # Create order
+                # Create the order
                 order = Order.objects.create(
                     user=request.user,
                     total_price=request.data.get('total_price', 0),
-                    status='processing'
+                    status='pending'
                 )
 
-                # Create order items
-                for item in request.data.get('items', []):
-                    try:
-                        # Get the jersey to check its current price
-                        jersey = Jersey.objects.get(id=item['jersey_id'])
-                        # Use sale price if available, otherwise use regular price
-                        price_to_use = jersey.sale_price if jersey.sale_price is not None else jersey.price
-
+                # Process each item in the cart
+                items = request.data.get('items', [])
+                for item in items:
+                    if item.get('type') == 'custom':
+                        # Handle custom jersey
                         OrderItem.objects.create(
                             order=order,
-                            jersey=jersey,
-                            quantity=item['quantity'],
-                            price=price_to_use,  # Use the current price
+                            quantity=item.get('quantity', 1),
+                            price=item.get('price', 0),
                             size=item.get('size', 'M'),
-                            type=item.get('type', 'regular'),
-                            player_name=item.get('player_name', '')
+                            type='custom',
+                            player_name=item.get('name', '')  # Store custom name
                         )
-                    except KeyError as e:
-                        raise ValueError(f"Missing required field: {str(e)}")
-                    except Jersey.DoesNotExist:
-                        raise ValueError(f"Jersey with id {item['jersey_id']} not found")
+                    else:
+                        # Handle regular jersey
+                        try:
+                            jersey = Jersey.objects.get(id=item.get('jersey_id'))
+                            OrderItem.objects.create(
+                                order=order,
+                                jersey=jersey,
+                                quantity=item.get('quantity', 1),
+                                price=item.get('price', 0),
+                                size=item.get('size', 'M'),
+                                type='regular'
+                            )
+                        except Jersey.DoesNotExist:
+                            raise serializers.ValidationError(f"Jersey with id {item.get('jersey_id')} not found")
 
-                serializer = OrderSerializer(order)
                 return Response({
                     'message': 'Order created successfully',
-                    'data': serializer.data
+                    'order_id': order.id
                 }, status=status.HTTP_201_CREATED)
 
-        except ValueError as e:
+        except Exception as e:
             return Response({
                 'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error(f"Error creating order: {str(e)}")
-            return Response({
-                'error': 'Failed to create order'
             }, status=status.HTTP_400_BAD_REQUEST)
 
 # User Order Tracking
@@ -288,8 +283,10 @@ class AdminOrderView(APIView):
     permission_classes = [IsAdminUser]  # Allow only admins to access this view
 
     def get(self, request):
-        orders = Order.objects.all()  # Fetch all orders in the system
-        serializer = AdminOrderSerializer(orders, many=True)  # Serialize all orders
+        orders = Order.objects.all().order_by('-created_at')
+        # Prefetch related return requests to optimize queries
+        orders = orders.prefetch_related('returns')
+        serializer = AdminOrderSerializer(orders, many=True)
         return Response(serializer.data)
 
     def patch(self, request, pk):
@@ -386,12 +383,31 @@ class RecommendedJerseysView(APIView):
 
     def get(self, request):
         try:
-            recommended_jerseys = Jersey.objects.order_by('?')[:5]
-            serializer = JerseySerializer(recommended_jerseys, many=True, context={'request': request})  # Pass the request here
+            purchased_jerseys = OrderItem.objects.filter(
+                order__user=request.user,
+                order__status='delivered'
+            ).values_list('jersey_id', flat=True)
+
+            recommendations = Jersey.objects.exclude(
+                id__in=purchased_jerseys
+            ).select_related(
+                'player', 
+                'player__team'
+            ).prefetch_related(
+                'images'
+            )[:5]
+
+            serializer = JerseySerializer(
+                recommendations, 
+                many=True,
+                context={'request': request}
+            )
             return Response(serializer.data)
         except Exception as e:
-            print(f"Error in RecommendedJerseysView: {e}")
-            return Response({'error': str(e)}, status=500)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
 
 class WishlistView(APIView):
@@ -811,88 +827,68 @@ class OrderReturnView(APIView):
 
     def post(self, request, order_id):
         try:
-            order = Order.objects.get(id=order_id)
-
-            # Check if user owns this order
-            if order.user != request.user:
-                return Response(
-                    {'error': 'Not authorized to return this order'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-
-            # Check if order is delivered
+            order = Order.objects.get(id=order_id, user=request.user)
+            
             if order.status != 'delivered':
                 return Response(
-                    {'error': 'Only delivered orders can be returned'},
+                    {"error": "Only delivered orders can be returned"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Check if order is within 7 days of delivery
-            delivery_date = order.updated_at
-            if timezone.now() - delivery_date > timedelta(days=7):
-                return Response(
-                    {'error': 'Orders can only be returned within 7 days of delivery'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Check if return reason is provided
-            reason = request.data.get('reason')
-            if not reason:
-                return Response(
-                    {'error': 'Return reason is required'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            # Update order status to return_requested
+            order.status = 'return_requested'
+            order.save()
 
             # Create return request
-            serializer = ReturnSerializer(
-                data={'order': order.id, 'reason': reason},
-                context={'request': request}
+            return_reason = request.data.get('reason', '')
+            Return.objects.create(
+                order=order,
+                user=request.user,
+                reason=return_reason
             )
-            
-            if serializer.is_valid():
-                serializer.save()
-                order.status = 'return_pending'
-                order.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+            return Response({"message": "Return request submitted successfully"})
         except Order.DoesNotExist:
             return Response(
-                {'error': 'Order not found'},
+                {"error": "Order not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
 class ReturnApprovalView(APIView):
     permission_classes = [IsAdminUser]
 
-    def patch(self, request, return_id):
+    def post(self, request, return_id):
         try:
             return_request = Return.objects.get(id=return_id)
-            action = request.data.get('action')
-
-            if action not in ['approve', 'reject']:
+            
+            # Determine action from URL
+            if 'approve' in request.path:
+                action = 'approve'
+            elif 'reject' in request.path:
+                action = 'reject'
+            else:
                 return Response(
-                    {'error': 'Invalid action. Must be either "approve" or "reject"'},
+                    {"error": "Invalid action URL"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            with transaction.atomic():
-                if action == 'approve':
-                    return_request.status = 'approved'
-                    return_request.order.status = 'return_approved'
-                else:
-                    return_request.status = 'rejected'
-                    return_request.order.status = 'return_rejected'
+            if action == 'approve':
+                return_request.status = 'approved'
+                return_request.order.status = 'return_approved'
+            else:  # reject
+                return_request.status = 'rejected'
+                return_request.order.status = 'return_rejected'
 
-                return_request.save()
-                return_request.order.save()
+            return_request.save()
+            return_request.order.save()
 
-            return Response(ReturnSerializer(return_request).data)
-
+            return Response({
+                "message": f"Return request {action}d successfully",
+                "status": return_request.status
+            })
         except Return.DoesNotExist:
             return Response(
-                {'error': 'Return request not found'},
+                {"error": "Return request not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
 

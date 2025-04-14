@@ -9,20 +9,32 @@ import {
     Box,
     CircularProgress,
     Alert,
+    Card,
+    CardMedia,
+    CardContent,
+    CardActions,
+    Button,
 } from '@mui/material';
 import JerseyCard from '../components/JerseyCard';
 import { CartContext } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
+import { useNavigate } from 'react-router-dom';
 
 function WishlistPage() {
     const [wishlist, setWishlist] = useState([]);
+    const [recommendedJerseys, setRecommendedJerseys] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { addToCart } = useContext(CartContext);
     const { showToast } = useToast();
+    const navigate = useNavigate();
+    const [imageError, setImageError] = useState({});
 
     useEffect(() => {
-        fetchWishlist();
+        Promise.all([
+            fetchWishlist(),
+            fetchRecommendedJerseys()
+        ]);
     }, []);
 
     const fetchWishlist = async () => {
@@ -35,6 +47,16 @@ function WishlistPage() {
             setError('Failed to load wishlist. Please try again later.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchRecommendedJerseys = async () => {
+        try {
+            const response = await API.get('/jerseys/recommendations/');
+            setRecommendedJerseys(response.data);
+        } catch (error) {
+            console.error('Error fetching recommendations:', error);
+            setRecommendedJerseys([]);
         }
     };
 
@@ -64,6 +86,13 @@ function WishlistPage() {
             console.error('Error moving to cart:', error);
             showToast('Failed to move to cart', 'error');
         }
+    };
+
+    const handleImageError = (jerseyId) => {
+        setImageError(prev => ({
+            ...prev,
+            [jerseyId]: true
+        }));
     };
 
     if (loading) {
@@ -144,6 +173,57 @@ function WishlistPage() {
                     </Grid>
                 )}
             </Box>
+
+            {/* Only show recommendations if there are any */}
+            {recommendedJerseys.length > 0 && (
+                <Box sx={{ mt: 6 }}>
+                    <Typography variant="h4" gutterBottom>
+                        Recommended for You
+                    </Typography>
+                    <Grid container spacing={3}>
+                        {recommendedJerseys.map((jersey) => (
+                            <Grid item xs={12} sm={6} md={4} key={jersey.id}>
+                                <Card 
+                                    sx={{ 
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        '&:hover': {
+                                            boxShadow: 6
+                                        }
+                                    }}
+                                >
+                                    <CardMedia
+                                        component="img"
+                                        height="300"
+                                        image={imageError[jersey.id] ? '/placeholder.jpg' : (jersey.primary_image || '/placeholder.jpg')}
+                                        alt={jersey.player?.name}
+                                        sx={{ objectFit: 'contain' }}
+                                        onError={() => handleImageError(jersey.id)}
+                                    />
+                                    <CardContent sx={{ flexGrow: 1 }}>
+                                        <Typography gutterBottom variant="h6" component="h2">
+                                            {jersey.player?.name}'s Jersey
+                                        </Typography>
+                                        <Typography variant="h6" color="primary">
+                                            ₹{jersey.sale_price || jersey.price}
+                                        </Typography>
+                                    </CardContent>
+                                    <CardActions>
+                                        <Button 
+                                            fullWidth 
+                                            variant="contained"
+                                            onClick={() => navigate(`/jersey/${jersey.id}`)}
+                                        >
+                                            View Details
+                                        </Button>
+                                    </CardActions>
+                                </Card>
+                            </Grid>
+                        ))}
+                    </Grid>
+                </Box>
+            )}
         </Container>
     );
 }

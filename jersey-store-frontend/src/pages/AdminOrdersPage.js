@@ -24,20 +24,26 @@ import {
     InputAdornment,
     IconButton,
     Alert,
-    InputBase
+    InputBase,
+    Button
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { adminApi } from '../api/adminApi';
 import { debounce } from 'lodash';
 import { updateOrderStatus } from '../api/api';
+import { API } from '../api/api';
+import { useToast } from '../context/ToastContext';
 
 const ORDER_STATUSES = {
     PENDING: 'Pending',
     PROCESSING: 'Processing',
     SHIPPED: 'Shipped',
     DELIVERED: 'Delivered',
-    CANCELLED: 'Cancelled'
+    CANCELLED: 'Cancelled',
+    RETURN_REQUESTED: 'Return Requested',
+    RETURN_APPROVED: 'Return Approved',
+    RETURN_REJECTED: 'Return Rejected'
 };
 
 const STATUS_COLORS = {
@@ -45,7 +51,10 @@ const STATUS_COLORS = {
     processing: 'info',
     shipped: 'primary',
     delivered: 'success',
-    cancelled: 'error'
+    cancelled: 'error',
+    return_requested: 'warning',
+    return_approved: 'success',
+    return_rejected: 'error'
 };
 
 // Add this new component for the search bar
@@ -171,6 +180,7 @@ function AdminOrdersPage() {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [statusFilter, setStatusFilter] = useState(location.state?.filterStatus || 'all');
     const [searchInput, setSearchInput] = useState('');
+    const { showToast } = useToast();
 
     // Update the fetchOrders function to handle empty search properly
     const fetchOrders = React.useCallback(async () => {
@@ -283,6 +293,24 @@ function AdminOrdersPage() {
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
+    };
+
+    const handleReturnAction = async (orderId, returnId, action) => {
+        try {
+            if (!returnId) {
+                showToast('Return ID not found', 'error');
+                return;
+            }
+
+            // Call the specific endpoint for approve/reject
+            await API.post(`/returns/${returnId}/${action}/`);
+            
+            showToast(`Return ${action}d successfully`, 'success');
+            fetchOrders(); // Refresh orders list
+        } catch (error) {
+            console.error('Return action error:', error);
+            showToast(error.response?.data?.error || `Failed to ${action} return`, 'error');
+        }
     };
 
     if (loading) {
@@ -442,47 +470,74 @@ function AdminOrdersPage() {
                                                 />
                                             </TableCell>
                                             <TableCell>
-                                                <FormControl 
-                                                    size="small" 
-                                                    sx={{ 
-                                                        width: 200,
-                                                    }}
-                                                >
-                                                    <Select
-                                                        value={order.status}
-                                                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                                                        sx={{
-                                                            height: 40,
-                                                            '& .MuiSelect-select': {
-                                                                py: 1,
-                                                                fontSize: '0.875rem'
-                                                            }
+                                                {order.status === 'return_requested' ? (
+                                                    <Box>
+                                                        <Button
+                                                            color="primary"
+                                                            size="small"
+                                                            onClick={() => handleReturnAction(order.id, order.return_id, 'approve')}
+                                                            sx={{ mr: 1 }}
+                                                            disabled={!order.return_id}
+                                                        >
+                                                            Approve Return
+                                                        </Button>
+                                                        <Button
+                                                            color="error"
+                                                            size="small"
+                                                            onClick={() => handleReturnAction(order.id, order.return_id, 'reject')}
+                                                            disabled={!order.return_id}
+                                                        >
+                                                            Reject Return
+                                                        </Button>
+                                                        {order.return_reason && (
+                                                            <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
+                                                                Reason: {order.return_reason}
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                ) : (
+                                                    <FormControl 
+                                                        size="small" 
+                                                        sx={{ 
+                                                            width: 200,
                                                         }}
                                                     >
-                                                        {Object.entries(ORDER_STATUSES).map(([key, value]) => (
-                                                            <MenuItem 
-                                                                key={key} 
-                                                                value={key.toLowerCase()}
-                                                                sx={{
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: 1,
+                                                        <Select
+                                                            value={order.status}
+                                                            onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                                            sx={{
+                                                                height: 40,
+                                                                '& .MuiSelect-select': {
+                                                                    py: 1,
                                                                     fontSize: '0.875rem'
-                                                                }}
-                                                            >
-                                                                <Box
+                                                                }
+                                                            }}
+                                                        >
+                                                            {Object.entries(ORDER_STATUSES).map(([key, value]) => (
+                                                                <MenuItem 
+                                                                    key={key} 
+                                                                    value={key.toLowerCase()}
                                                                     sx={{
-                                                                        width: 8,
-                                                                        height: 8,
-                                                                        borderRadius: '50%',
-                                                                        bgcolor: STATUS_COLORS[key.toLowerCase()]?.borderColor
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 1,
+                                                                        fontSize: '0.875rem'
                                                                     }}
-                                                                />
-                                                                {value}
-                                                            </MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                </FormControl>
+                                                                >
+                                                                    <Box
+                                                                        sx={{
+                                                                            width: 8,
+                                                                            height: 8,
+                                                                            borderRadius: '50%',
+                                                                            bgcolor: STATUS_COLORS[key.toLowerCase()]?.borderColor
+                                                                        }}
+                                                                    />
+                                                                    {value}
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    </FormControl>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}

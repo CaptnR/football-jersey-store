@@ -26,7 +26,7 @@ class JerseySerializer(serializers.ModelSerializer):
     currency = serializers.SerializerMethodField()
     team_name = serializers.CharField(source='player.team.name', read_only=True)
     league = serializers.CharField(source='player.team.league', read_only=True)
-    average_rating = serializers.SerializerMethodField()
+    average_rating = serializers.FloatField(read_only=True)
     user_has_purchased = serializers.SerializerMethodField()
     is_low_stock = serializers.BooleanField(read_only=True)
     images = JerseyImageSerializer(many=True, read_only=True)
@@ -77,15 +77,12 @@ class JerseySerializer(serializers.ModelSerializer):
         return False
 
     def get_primary_image(self, obj):
-        primary_image = obj.primary_image
+        primary_image = obj.images.first()
         if primary_image:
-            return {
-                'id': primary_image.id,
-                'image': {
-                    'url': primary_image.image.url
-                },
-                'is_primary': primary_image.is_primary
-            }
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(primary_image.image.url)
+            return primary_image.image.url
         return None
 
     def get_sale_price(self, obj):
@@ -151,11 +148,21 @@ class UserOrderSerializer(serializers.ModelSerializer):
         fields = ['id', 'total_price', 'status', 'created_at']
 
 class AdminOrderSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()  # Show username instead of user ID
+    user = serializers.CharField(source='user.username')
+    return_id = serializers.SerializerMethodField()
+    return_reason = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'total_price', 'status', 'created_at']
+        fields = ['id', 'user', 'status', 'total_price', 'created_at', 'return_id', 'return_reason']
+
+    def get_return_id(self, obj):
+        return_request = Return.objects.filter(order=obj).first()
+        return return_request.id if return_request else None
+
+    def get_return_reason(self, obj):
+        return_request = Return.objects.filter(order=obj).first()
+        return return_request.reason if return_request else None
 
 class ReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username', read_only=True)

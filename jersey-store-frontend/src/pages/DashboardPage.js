@@ -15,7 +15,8 @@ import {
     Button,
     Divider,
     Paper,
-    Alert
+    Alert,
+    CardMedia
 } from '@mui/material';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -47,25 +48,12 @@ function DashboardPage() {
 
     const fetchDashboardData = async () => {
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                navigate('/login');
-                return;
-            }
-
+            setLoading(true);
             const response = await API.get('/dashboard/');
-            console.log('Dashboard response:', response.data);
-
-            // Check if we need to redirect to admin dashboard
-            if (response.data.redirect === 'admin') {
-                navigate('/admin/dashboard');
-                return;
-            }
-
+            console.log('Dashboard data:', response.data);
             setDashboardData(response.data);
-            setError(null);
-        } catch (err) {
-            console.error('Error fetching dashboard data:', err);
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
             setError('Failed to load dashboard data');
         } finally {
             setLoading(false);
@@ -212,14 +200,18 @@ function DashboardPage() {
                         <Grid item xs={12} sm={6} md={4} key={jersey.id}>
                             <Card>
                                 <CardContent>
-                                    <Box 
+                                    <CardMedia
                                         component="img"
-                                        src={jersey.image}
+                                        image={jersey.primary_image || '/placeholder.jpg'}
                                         alt={jersey.player?.name}
                                         sx={{
                                             width: '100%',
                                             height: 200,
                                             objectFit: 'contain'
+                                        }}
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = '/placeholder.jpg';
                                         }}
                                     />
                                     <Typography variant="h6">
@@ -255,14 +247,18 @@ function DashboardPage() {
                         <Grid item xs={12} sm={6} md={4} key={jersey.id}>
                             <Card>
                                 <CardContent>
-                                    <Box 
+                                    <CardMedia
                                         component="img"
-                                        src={jersey.image}
+                                        src={jersey.primary_image || '/placeholder.jpg'}
                                         alt={jersey.player?.name}
                                         sx={{
                                             width: '100%',
                                             height: 200,
                                             objectFit: 'contain'
+                                        }}
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = '/placeholder.jpg';
                                         }}
                                     />
                                     <Typography variant="h6">

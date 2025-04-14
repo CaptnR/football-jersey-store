@@ -72,7 +72,11 @@ urlpatterns += [
 ]
 
 urlpatterns += [
-    path('returns/<int:return_id>/approve/', views.ReturnApprovalView.as_view(), name='return-approval'),
+    path('returns/<int:return_id>/approve/', views.ReturnApprovalView.as_view(), name='return-approve'),
+]
+
+urlpatterns += [
+    path('returns/<int:return_id>/reject/', views.ReturnApprovalView.as_view(), name='return-reject'),
 ]
 
 urlpatterns += [

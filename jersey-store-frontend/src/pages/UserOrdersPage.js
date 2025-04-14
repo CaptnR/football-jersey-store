@@ -154,12 +154,16 @@ function UserOrdersPage() {
         }
     };
 
-    const handleReturnOrder = async (reason) => {
+    const handleReturnRequest = async (orderId) => {
         try {
-            await API.post(`/orders/${selectedOrderId}/return/`, { reason });
+            const reason = prompt('Please provide a reason for the return:');
+            if (!reason) return;
+
+            await API.post(`/orders/${orderId}/return/`, {
+                reason: reason
+            });
             showToast('Return request submitted successfully', 'success');
-            setReturnDialogOpen(false);
-            fetchOrders();
+            fetchOrders(); // Refresh orders list
         } catch (error) {
             showToast(error.response?.data?.error || 'Failed to submit return request', 'error');
         }
@@ -254,17 +258,14 @@ function UserOrdersPage() {
                                                             Cancel Order
                                                         </Button>
                                                     )}
-                                                    {canReturnOrder(order) && (
+                                                    {order.status === 'delivered' && (
                                                         <Button
                                                             variant="outlined"
                                                             color="primary"
                                                             size="small"
-                                                            onClick={() => {
-                                                                setSelectedOrderId(order.id);
-                                                                setReturnDialogOpen(true);
-                                                            }}
+                                                            onClick={() => handleReturnRequest(order.id)}
                                                         >
-                                                            Return Order
+                                                            Request Return
                                                         </Button>
                                                     )}
                                                 </TableCell>
@@ -281,7 +282,7 @@ function UserOrdersPage() {
             <ReturnDialog
                 open={returnDialogOpen}
                 onClose={() => setReturnDialogOpen(false)}
-                onSubmit={handleReturnOrder}
+                onSubmit={handleReturnRequest}
             />
         </Container>
     );
