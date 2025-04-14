@@ -58,11 +58,11 @@ function HomePage() {
             const params = new URLSearchParams();
             
             if (filters.league) {
-                params.append('player__team__league', filters.league);
+                params.append('league', filters.league);
             }
             
             if (filters.team) {
-                params.append('player__team__name', filters.team);
+                params.append('team', filters.team);
             }
             
             if (filters.minRating > 0) {
@@ -73,6 +73,7 @@ function HomePage() {
                 params.append('search', searchQuery);
             }
 
+            console.log('Fetching with params:', params.toString()); // Debug log
             const response = await API.get(`/jerseys/?${params.toString()}`);
             console.log('Fetched jerseys:', response.data); // Debug log
             setJerseys(response.data);
@@ -108,7 +109,7 @@ function HomePage() {
     // Fetch when filters change
     useEffect(() => {
         fetchAllJerseys();
-    }, [filters]);
+    }, [filters, searchQuery]);
 
     const fetchWishlist = async () => {
         try {
@@ -126,6 +127,7 @@ function HomePage() {
 
     const handleFilterChange = (field) => (event) => {
         const value = event.target.value;
+        console.log(`Changing ${field} to:`, value); // Debug log
         setFilters(prev => ({
             ...prev,
             [field]: value

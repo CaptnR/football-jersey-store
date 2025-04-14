@@ -88,15 +88,31 @@ class JerseyViewSet(viewsets.ModelViewSet):
     serializer_class = JerseySerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['player__name', 'player__team__name', 'player__team__league']
-    filterset_fields = ['player__team__league', 'player__team']
 
     def get_queryset(self):
-        return Jersey.objects.select_related(
-            'player', 
+        queryset = Jersey.objects.all().prefetch_related(
+            'images',
+            'reviews',
             'player__team'
-        ).prefetch_related(
-            'images'
-        ).all()
+        ).annotate(
+            avg_rating=models.Avg('reviews__rating')
+        )
+
+        # Handle filters
+        league = self.request.query_params.get('league', None)
+        team = self.request.query_params.get('team', None)
+        min_rating = self.request.query_params.get('min_rating', None)
+
+        if league:
+            queryset = queryset.filter(player__team__league=league)
+        
+        if team:
+            queryset = queryset.filter(player__team__name=team)
+
+        if min_rating is not None and min_rating != '0':
+            queryset = queryset.filter(average_rating__gte=float(min_rating))
+
+        return queryset
 
     def retrieve(self, request, *args, **kwargs):
         try:
