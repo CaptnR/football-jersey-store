@@ -157,13 +157,19 @@ function CheckoutPage() {
             ...prev,
             [name]: value
         }));
-        // Clear error when user starts typing
-        if (shippingErrors[name]) {
-            setShippingErrors(prev => ({
-                ...prev,
-                [name]: ''
-            }));
-        }
+    };
+
+    const handleShippingBlur = (e) => {
+        const { name, value } = e.target;
+        const errors = validateShippingData({
+            ...shippingData,
+            [name]: value
+        });
+        
+        setShippingErrors(prev => ({
+            ...prev,
+            [name]: errors[name] || ''
+        }));
     };
 
     const handlePaymentChange = (e) => {
@@ -187,13 +193,19 @@ function CheckoutPage() {
             ...prev,
             [name]: formattedValue
         }));
-        // Clear error when user starts typing
-        if (paymentErrors[name]) {
-            setPaymentErrors(prev => ({
-                ...prev,
-                [name]: ''
-            }));
-        }
+    };
+
+    const handlePaymentBlur = (e) => {
+        const { name, value } = e.target;
+        const errors = validatePaymentData({
+            ...paymentData,
+            [name]: value
+        });
+        
+        setPaymentErrors(prev => ({
+            ...prev,
+            [name]: errors[name] || ''
+        }));
     };
 
     const handlePlaceOrder = async () => {
@@ -258,6 +270,7 @@ function CheckoutPage() {
                                     name="fullName"
                                     value={shippingData.fullName}
                                     onChange={handleShippingChange}
+                                    onBlur={handleShippingBlur}
                                     margin="normal"
                                     error={!!shippingErrors.fullName}
                                     helperText={shippingErrors.fullName}
@@ -271,6 +284,7 @@ function CheckoutPage() {
                                     name="address"
                                     value={shippingData.address}
                                     onChange={handleShippingChange}
+                                    onBlur={handleShippingBlur}
                                     margin="normal"
                                     error={!!shippingErrors.address}
                                     helperText={shippingErrors.address}
@@ -286,6 +300,7 @@ function CheckoutPage() {
                                     name="city"
                                     value={shippingData.city}
                                     onChange={handleShippingChange}
+                                    onBlur={handleShippingBlur}
                                     margin="normal"
                                     error={!!shippingErrors.city}
                                     helperText={shippingErrors.city}
@@ -299,6 +314,7 @@ function CheckoutPage() {
                                     name="postalCode"
                                     value={shippingData.postalCode}
                                     onChange={handleShippingChange}
+                                    onBlur={handleShippingBlur}
                                     margin="normal"
                                     error={!!shippingErrors.postalCode}
                                     helperText={shippingErrors.postalCode}
@@ -312,6 +328,7 @@ function CheckoutPage() {
                                     name="country"
                                     value={shippingData.country}
                                     onChange={handleShippingChange}
+                                    onBlur={handleShippingBlur}
                                     margin="normal"
                                     error={!!shippingErrors.country}
                                     helperText={shippingErrors.country}
@@ -346,6 +363,7 @@ function CheckoutPage() {
                                     name="cardName"
                                     value={paymentData.cardName}
                                     onChange={handlePaymentChange}
+                                    onBlur={handlePaymentBlur}
                                     margin="normal"
                                     error={!!paymentErrors.cardName}
                                     helperText={paymentErrors.cardName}
@@ -359,6 +377,7 @@ function CheckoutPage() {
                                     name="cardNumber"
                                     value={paymentData.cardNumber}
                                     onChange={handlePaymentChange}
+                                    onBlur={handlePaymentBlur}
                                     margin="normal"
                                     error={!!paymentErrors.cardNumber}
                                     helperText={paymentErrors.cardNumber}
@@ -373,6 +392,7 @@ function CheckoutPage() {
                                     name="expiryDate"
                                     value={paymentData.expiryDate}
                                     onChange={handlePaymentChange}
+                                    onBlur={handlePaymentBlur}
                                     margin="normal"
                                     error={!!paymentErrors.expiryDate}
                                     helperText={paymentErrors.expiryDate}
@@ -388,6 +408,7 @@ function CheckoutPage() {
                                     name="cvv"
                                     value={paymentData.cvv}
                                     onChange={handlePaymentChange}
+                                    onBlur={handlePaymentBlur}
                                     margin="normal"
                                     error={!!paymentErrors.cvv}
                                     helperText={paymentErrors.cvv}
